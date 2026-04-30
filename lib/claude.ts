@@ -2,6 +2,9 @@ import type { CaseStudy, HeadlineFinding, RawFinding, SeverityRating, Summary } 
 import { formatDate, formatNative, formatUsd } from "@/lib/utils";
 
 const USE_MOCK_COMMENTARY = process.env.USE_MOCK_COMMENTARY !== "false";
+const COMMENTARY_PROVIDER = process.env.COMMENTARY_PROVIDER ?? "openai";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
 
 const PROTOTYPE_COPY: Record<
   RawFinding["key"],
@@ -68,7 +71,174 @@ export async function generateCommentary(input: {
     return buildMockCommentary(input.rawFindings, input.summary);
   }
 
-  throw new Error("Live Anthropic mode is disabled in this environment.");
+  if (COMMENTARY_PROVIDER === "openai" && OPENAI_API_KEY) {
+    try {
+      return await generateOpenAiCommentary(input);
+    } catch {
+      return buildMockCommentary(input.rawFindings, input.summary);
+    }
+  }
+
+  return buildMockCommentary(input.rawFindings, input.summary);
+}
+
+async function generateOpenAiCommentary(input: {
+  wallet: string;
+  displayName: string;
+  rawFindings: RawFinding[];
+  summary: Summary;
+}) {
+  const mockReference = buildMockCommentary(input.rawFindings, input.summary);
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      reasoning: { effort: "minimal" },
+      max_output_tokens: 2200,
+      input: [
+        {
+          role: "system",
+          content: [
+            {
+              type: "input_text",
+              text:
+                "You write satirical NFT audit reports in the voice of the Bureau of Onchain Affairs. Always write in the third person about 'the subject'. The tone is dry, bureaucratic, faintly aggrieved, and never explicitly mean. No crypto slang. No emojis. No exclamation points. Formal sentences. Understatement carries the punchline. Return valid JSON only. No markdown fences or prefatory text."
+            }
+          ]
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: JSON.stringify({
+                task: "Generate commentary for a wallet audit.",
+                wallet: input.wallet,
+                displayName: input.displayName,
+                summary: input.summary,
+                findings: input.rawFindings,
+                schema: {
+                  caseStudies: [
+                    {
+                      id: "I",
+                      category: "Exhibit A · Paper Hands",
+                      title: "string",
+                      asset: "string",
+                      acquired: { date: "string", price: "string", usd: "string" },
+                      disposed: { date: "string", price: "string", usd: "string" },
+                      aftermath: "string",
+                      counterfactual: "string",
+                      commentary: "string",
+                      severity: "string"
+                    }
+                  ],
+                  headlineFinding: { text: "string", loss: "string" },
+                  severityRating: { grade: "string", label: "string", outlook: "string", blurb: "string" }
+                },
+                instructions: [
+                  "Preserve the caseStudies order and ids you are given in the reference examples.",
+                  "Every wallet must get a unique headlineFinding.text.",
+                  "Use a credit-rating style grade like DDD−, CC+, or BB.",
+                  "Keep category, asset, acquired, and disposed fields unchanged from the reference examples.",
+                  "Rewrite title, aftermath, counterfactual, commentary, severity, headlineFinding, and severityRating.blurb in the Bureau voice."
+                ],
+                referenceExamples: mockReference
+              })
+            }
+          ]
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI commentary request failed (${response.status})`);
+  }
+
+  const payload = (await response.json()) as {
+    output_text?: string;
+    output?: Array<{
+      content?: Array<{
+        type?: string;
+        text?: string;
+      }>;
+    }>;
+  };
+
+  const text =
+    payload.output_text ??
+    payload.output
+      ?.flatMap((item) => item.content ?? [])
+      .filter((item) => item.type === "output_text" || item.type === "text")
+      .map((item) => item.text ?? "")
+      .join("") ??
+    "";
+
+  if (!text.trim()) {
+    throw new Error("OpenAI commentary response was empty.");
+  }
+
+  const parsed = JSON.parse(extractJson(text)) as {
+    caseStudies: CaseStudy[];
+    headlineFinding: HeadlineFinding;
+    severityRating: SeverityRating;
+  };
+
+  return sanitizeOpenAiOutput(parsed, mockReference);
+}
+
+function sanitizeOpenAiOutput(
+  parsed: {
+    caseStudies: CaseStudy[];
+    headlineFinding: HeadlineFinding;
+    severityRating: SeverityRating;
+  },
+  fallback: {
+    caseStudies: CaseStudy[];
+    headlineFinding: HeadlineFinding;
+    severityRating: SeverityRating;
+  }
+) {
+  const fallbackById = new Map(fallback.caseStudies.map((caseStudy) => [caseStudy.id, caseStudy]));
+  const caseStudies = fallback.caseStudies.map((fallbackCase) => {
+    const candidate = parsed.caseStudies?.find((caseStudy) => caseStudy.id === fallbackCase.id) ?? fallbackById.get(fallbackCase.id);
+    if (!candidate) return fallbackCase;
+    return {
+      ...fallbackCase,
+      title: candidate.title || fallbackCase.title,
+      aftermath: candidate.aftermath || fallbackCase.aftermath,
+      counterfactual: candidate.counterfactual || fallbackCase.counterfactual,
+      commentary: candidate.commentary || fallbackCase.commentary,
+      severity: candidate.severity || fallbackCase.severity
+    };
+  });
+
+  return {
+    caseStudies,
+    headlineFinding: {
+      text: parsed.headlineFinding?.text || fallback.headlineFinding.text,
+      loss: parsed.headlineFinding?.loss || fallback.headlineFinding.loss
+    },
+    severityRating: {
+      grade: parsed.severityRating?.grade || fallback.severityRating.grade,
+      label: parsed.severityRating?.label || fallback.severityRating.label,
+      outlook: parsed.severityRating?.outlook || fallback.severityRating.outlook,
+      blurb: parsed.severityRating?.blurb || fallback.severityRating.blurb
+    }
+  };
+}
+
+function extractJson(text: string) {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed;
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start >= 0 && end > start) return trimmed.slice(start, end + 1);
+  throw new Error("No JSON object found in OpenAI response.");
 }
 
 function buildMockCommentary(rawFindings: RawFinding[], summary: Summary) {

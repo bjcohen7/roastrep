@@ -8,8 +8,8 @@ Satirical NFT audit app built with Next.js App Router.
 - Dynamic wallet route and OG image route working
 - ENS resolution working
 - Alchemy-backed NFT data path working
-- Anthropic commentary path wired, but currently blocked until the Anthropic workspace/API billing issue is resolved
-- Fallback copy path is live, so the app still renders audits without Anthropic
+- OpenAI commentary path wired as the primary live LLM provider
+- Fallback mock copy path is live, so the app still renders audits even if the LLM provider fails
 
 ## Local Setup
 
@@ -23,6 +23,9 @@ corepack pnpm install
 
 ```env
 ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5-mini
+COMMENTARY_PROVIDER=openai
 RESERVOIR_API_KEY=
 ALCHEMY_API_KEY=
 ETH_RPC_URL=
@@ -30,14 +33,16 @@ ETHERSCAN_API_KEY=
 KV_REST_API_URL=
 KV_REST_API_TOKEN=
 NEXT_PUBLIC_SITE_URL=https://theroastreport.xyz
-USE_MOCK_COMMENTARY=true
+USE_MOCK_COMMENTARY=false
 ```
 
 Recommended for the current setup:
 
 - `ALCHEMY_API_KEY`: required for live NFT data in the current fallback path
 - `ETH_RPC_URL`: use the Alchemy mainnet RPC URL
-- `USE_MOCK_COMMENTARY=true`: keeps the app fully runnable while Anthropic is unavailable
+- `OPENAI_API_KEY`: enables live Bureau commentary generation
+- `COMMENTARY_PROVIDER=openai`
+- `USE_MOCK_COMMENTARY=false`
 
 Optional for now:
 
@@ -61,9 +66,9 @@ curl 'http://localhost:3000/api/audit/vitalik.eth?refresh=1'
 
 ## Environment Notes
 
-### Anthropic
+### Commentary provider
 
-The app is currently pinned to mock commentary mode with `USE_MOCK_COMMENTARY=true`. To restore live Anthropic commentary later, change that env var to `false`.
+The app now prefers OpenAI for live commentary when `COMMENTARY_PROVIDER=openai` and `OPENAI_API_KEY` is present. If `USE_MOCK_COMMENTARY=true` or the OpenAI request fails, the app falls back to the built-in mock Bureau copy.
 
 ### Alchemy
 
