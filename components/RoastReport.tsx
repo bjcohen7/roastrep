@@ -19,8 +19,8 @@ type RoastReportProps = {
 const fontDisplay = "var(--font-fraunces), serif";
 const fontMono = "var(--font-jetbrains-mono), monospace";
 const fontBody = "var(--font-instrument-serif), serif";
-const ANALYSIS_STEP_DELAYS = [460, 520, 560, 600, 640, 680, 720, 760, 820] as const;
-const ANALYSIS_REDIRECT_DELAY = 520;
+const ANALYSIS_STEP_DELAYS = [700, 780, 860, 920, 980, 1040, 1100, 1160, 1220] as const;
+const ANALYSIS_REDIRECT_DELAY = 1240;
 const BEN_WALLET_EASTER_EGGS = new Set([
   "0x6d53c339d2f0ef9698e77ff5bc55961bd53e2c5b",
   "0xfebb6f14d86d596c49321318bb83987b373b6c9c"
