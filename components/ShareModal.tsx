@@ -59,8 +59,6 @@ export default function ShareModal({
 
   const composed = `${editableText}\n\n${fullUrl}`;
   const tweetIntent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(editableText)}&url=${encodeURIComponent(fullUrl)}`;
-  const warpcastIntent = `https://warpcast.com/~/compose?text=${encodeURIComponent(composed)}`;
-
   const cycleTweet = () => setTweetVariantIdx((value) => (value + 1) % SHARE_TEXT_VARIANTS.length);
 
   async function copyLink() {
@@ -223,7 +221,7 @@ export default function ShareModal({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <button
             onClick={() => window.open(tweetIntent, "_blank", "noopener")}
             className="rr-btn-dark py-3.5 text-[10px] tracking-[0.3em] uppercase transition-colors flex items-center justify-center gap-2"
@@ -235,18 +233,6 @@ export default function ShareModal({
             }}
           >
             <span>Post to 𝕏</span>
-          </button>
-          <button
-            onClick={() => window.open(warpcastIntent, "_blank", "noopener")}
-            className="rr-btn py-3.5 text-[10px] tracking-[0.3em] uppercase transition-colors flex items-center justify-center gap-2"
-            style={{
-              fontFamily: fontMono,
-              background: C.paper,
-              color: C.ink,
-              border: `1.5px solid ${C.ink}`
-            }}
-          >
-            <span>Cast on Farcaster</span>
           </button>
           <button
             onClick={copyCaptionAndLink}
