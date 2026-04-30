@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getAuditReport } from "@/lib/audit";
 import { consumeRateLimit } from "@/lib/cache";
+import { toPublicAuditError } from "@/lib/public-errors";
 
 type RouteContext = {
   params: Promise<{ wallet: string }>;
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Audit failed." },
+      { error: toPublicAuditError(error) },
       { status: 400, headers: rateHeaders }
     );
   }

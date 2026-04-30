@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 import RoastReport from "@/components/RoastReport";
-import { auditVersionHash, getAuditReport } from "@/lib/audit";
+import { auditVersionHash, getAuditReport, getCachedAuditReport } from "@/lib/audit";
+import { consumeRateLimit } from "@/lib/cache";
+import { toPublicAuditError } from "@/lib/public-errors";
 
 type WalletPageProps = {
   params: Promise<{ wallet: string }>;
@@ -10,7 +13,12 @@ type WalletPageProps = {
 export async function generateMetadata({ params }: WalletPageProps): Promise<Metadata> {
   const { wallet } = await params;
   try {
-    const report = await getAuditReport(wallet);
+    const report = await getCachedAuditReport(wallet);
+    if (!report) {
+      return {
+        title: `The Roast Report — ${wallet}`
+      };
+    }
     const baseUrl = report.shareBaseUrl.startsWith("http") ? report.shareBaseUrl : `https://${report.shareBaseUrl}`;
     const canonicalPath = `/${encodeURIComponent(wallet)}`;
     const ogImageUrl = `${baseUrl}/api/og/${encodeURIComponent(wallet)}?v=${auditVersionHash(report)}`;
@@ -58,13 +66,34 @@ export async function generateMetadata({ params }: WalletPageProps): Promise<Met
 export default async function WalletPage({ params }: WalletPageProps) {
   const { wallet } = await params;
   try {
+    const cached = await getCachedAuditReport(wallet);
+    if (cached) {
+      return <RoastReport initialStage="verdict" initialSubject={wallet} report={cached} />;
+    }
+
+    const headerStore = await headers();
+    const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rate = await consumeRateLimit(`rate:audit:page:${ip}`, 10, 60 * 60);
+
+    if (!rate.allowed) {
+      return (
+        <RoastReport
+          initialStage="intake"
+          initialSubject={wallet}
+          initialError="Rate limit exceeded."
+        />
+      );
+    }
+
     const report = await getAuditReport(wallet);
     return <RoastReport initialStage="verdict" initialSubject={wallet} report={report} />;
   } catch (error) {
-    const message =
-      error instanceof Error && error.message
-        ? error.message
-        : "The Bureau could not complete this review at present. Please try again shortly.";
-    return <RoastReport initialStage="intake" initialSubject={wallet} initialError={message} />;
+    return (
+      <RoastReport
+        initialStage="intake"
+        initialSubject={wallet}
+        initialError={toPublicAuditError(error)}
+      />
+    );
   }
 }

@@ -13,6 +13,12 @@ import { deterministicCaseNumber, formatDate, formatNative, formatUsd, shortAddr
 const AUDIT_TTL_SECONDS = 60 * 60 * 24;
 const AUDIT_SCHEMA_VERSION = "2026-04-30-activity-fallback";
 
+export async function getCachedAuditReport(subject: string) {
+  const resolved = await resolveWalletOrEns(subject);
+  const cacheKey = `audit:${AUDIT_SCHEMA_VERSION}:${resolved.address.toLowerCase()}`;
+  return getCachedJson<AuditReport>(cacheKey);
+}
+
 export async function getAuditReport(subject: string, options?: { refresh?: boolean }) {
   const resolved = await resolveWalletOrEns(subject);
   const cacheKey = `audit:${AUDIT_SCHEMA_VERSION}:${resolved.address.toLowerCase()}`;
