@@ -6,48 +6,6 @@ const COMMENTARY_PROVIDER = process.env.COMMENTARY_PROVIDER ?? "openai";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
 
-const PROTOTYPE_COPY: Record<
-  RawFinding["key"],
-  Pick<CaseStudy, "title" | "commentary" | "severity">
-> = {
-  paper_hands: {
-    title: "An Untimely Departure",
-    commentary:
-      "The subject realized a 9× return and considered the matter closed. The Bureau has reviewed the timestamp and confirms the sale occurred well before the asset's reasonable maturity.",
-    severity: "Egregious"
-  },
-  top_tick: {
-    title: "Acquisition at the Local Maximum",
-    commentary:
-      "A study in conviction. The subject committed at peak euphoria and surrendered well into resignation. The Bureau commends the consistency of the conviction, if not its direction.",
-    severity: "Concerning"
-  },
-  diamond_hands: {
-    title: "Held With Conviction. To Zero.",
-    commentary:
-      "A textbook case of conviction divorced from thesis. The Bureau notes the subject continues to display this asset in their wallet, which is its own form of testimony.",
-    severity: "Embarrassing"
-  },
-  rugpull: {
-    title: "A Discerning Palate",
-    commentary:
-      "The subject demonstrates an unusually refined nose for projects that vanish within a fortnight. The Bureau has not encountered a hit rate of this caliber in recent memory.",
-    severity: "Specialist-Grade"
-  },
-  gas_martyrdom: {
-    title: "An Offering to the Network",
-    commentary:
-      "The Bureau is not a religious organization. We have, however, lit a candle.",
-    severity: "Devotional"
-  },
-  notable_competence: {
-    title: "An Inconvenient Triumph",
-    commentary:
-      "The Bureau is obligated, in the interest of completeness, to acknowledge that on this single occasion the subject behaved with apparent intentionality. It will not be discussed further.",
-    severity: "Begrudging"
-  }
-};
-
 const CATEGORY_LABEL: Record<RawFinding["key"], string> = {
   paper_hands: "Paper Hands",
   top_tick: "Top-Tick Specialist",
@@ -246,12 +204,11 @@ function buildMockCommentary(rawFindings: RawFinding[], summary: Summary) {
     const caseStudies = rawFindings.map((finding, index) => {
       const numeral = ["I", "II", "III", "IV", "V", "VI"][index] ?? String(index + 1);
       const exhibit = String.fromCharCode(65 + index);
-      const prototype = PROTOTYPE_COPY[finding.key];
 
       return {
         id: numeral,
         category: `Exhibit ${exhibit} · ${CATEGORY_LABEL[finding.key]}`,
-        title: prototype.title,
+        title: buildTitle(finding),
         asset: finding.asset,
         acquired: {
           date: finding.acquisition.date,
@@ -265,23 +222,23 @@ function buildMockCommentary(rawFindings: RawFinding[], summary: Summary) {
         },
         aftermath: buildAftermath(finding),
         counterfactual: buildCounterfactual(finding),
-        commentary: prototype.commentary,
-        severity: prototype.severity
+        commentary: buildCommentary(finding),
+        severity: buildSeverity(finding)
       } satisfies CaseStudy;
     });
 
     return {
       caseStudies,
       headlineFinding: {
-        text: "The Bureau located only a modest NFT file for the subject. This should not be mistaken for prudence.",
-        loss: "Available evidence was insufficient to establish a broader pattern of collectible self-harm."
+        text: "The Bureau located only a modest NFT file for the subject. This is less a defense than an absence of evidence.",
+        loss: "Available activity was insufficient to prove catastrophe, though not to rule out amateurism."
       },
       severityRating: {
-        grade: "BB",
-        label: "Recoverable",
+        grade: "B+",
+        label: "Thin File",
         outlook: "Stable",
         blurb:
-          "The Bureau's file on this subject is unexpectedly thin. While the record contains isolated fees and minor incidents, it does not yet support a full indictment of judgment."
+          "The Bureau's file on this subject is thinner than expected. The available record suggests either restraint, inactivity, or the administrative good fortune of having fewer mistakes on file."
       }
     };
   }
@@ -289,12 +246,11 @@ function buildMockCommentary(rawFindings: RawFinding[], summary: Summary) {
   const caseStudies = rawFindings.map((finding, index) => {
     const numeral = ["I", "II", "III", "IV", "V", "VI"][index] ?? String(index + 1);
     const exhibit = String.fromCharCode(65 + index);
-    const prototype = PROTOTYPE_COPY[finding.key];
 
     return {
       id: numeral,
       category: `Exhibit ${exhibit} · ${CATEGORY_LABEL[finding.key]}`,
-      title: prototype.title,
+      title: buildTitle(finding),
       asset: finding.asset,
       acquired: {
         date: finding.acquisition.date,
@@ -308,8 +264,8 @@ function buildMockCommentary(rawFindings: RawFinding[], summary: Summary) {
       },
       aftermath: buildAftermath(finding),
       counterfactual: buildCounterfactual(finding),
-      commentary: prototype.commentary,
-      severity: prototype.severity
+      commentary: buildCommentary(finding),
+      severity: buildSeverity(finding)
     } satisfies CaseStudy;
   });
 
@@ -333,41 +289,60 @@ function buildMockCommentary(rawFindings: RawFinding[], summary: Summary) {
 
 function buildHeadline(finding: RawFinding) {
   if (finding.key === "paper_hands") {
-    return `On ${finding.disposition.date}, the subject sold ${finding.asset} for ${finding.disposition.displayPrice}. The Bureau notes the subsequent appreciation with some reluctance.`;
+    return `On ${finding.disposition.date}, the subject sold ${finding.asset} for ${finding.disposition.displayPrice} and then watched the remaining upside belong to someone better adjusted.`;
   }
   if (finding.key === "top_tick") {
-    return `The subject acquired ${finding.asset} on ${finding.acquisition.date} at what appears, in the record, to have been an enthusiastic price.`;
+    return `The subject acquired ${finding.asset} on ${finding.acquisition.date} at what appears, in the record, to have been the worst available moment.`;
   }
   if (finding.key === "diamond_hands") {
-    return `The subject continues to hold ${finding.asset}, apparently in the belief that time alone constitutes a thesis.`;
+    return `The subject continues to hold ${finding.asset}, apparently under the impression that neglect is an investment framework.`;
   }
   if (finding.key === "rugpull") {
-    return `The Bureau has reviewed ${finding.asset} and confirms the subject once again arrived before the lights went out.`;
+    return `The Bureau has reviewed ${finding.asset} and confirms the subject once again financed an orderly disappearance.`;
   }
   if (finding.key === "notable_competence") {
-    return `In a regrettable development for this report, the subject executed one trade with visible competence.`;
+    return `In a regrettable administrative development, the subject executed one trade with visible competence.`;
   }
-  return `The Bureau has tabulated the subject's transaction fees and regrets to confirm they were non-productive.`;
+  return `The Bureau has tabulated the subject's transaction fees and regrets to confirm that the network benefited more than the subject did.`;
+}
+
+function buildTitle(finding: RawFinding) {
+  if (finding.key === "paper_hands") {
+    return `Premature Exit from ${shortAsset(finding.asset)}`;
+  }
+  if (finding.key === "top_tick") {
+    return `Peak Euphoria, Duly Purchased`;
+  }
+  if (finding.key === "diamond_hands") {
+    return `Conviction Without Adult Supervision`;
+  }
+  if (finding.key === "rugpull") {
+    return `Counterparty Selection Failure`;
+  }
+  if (finding.key === "gas_martyrdom") {
+    return `An Offering to the Network`;
+  }
+  return `A Disturbing Moment of Competence`;
 }
 
 function buildAftermath(finding: RawFinding) {
   if (finding.key === "paper_hands") {
-    return `Asset later reached approximately ${formatNative(toNumber(finding.facts.peakNative) ?? 0)}. Subject exited well in advance of that development.`;
+    return `Asset later reached approximately ${formatNative(toNumber(finding.facts.peakNative) ?? 0)}. The subject had already excused themself from the upside.`;
   }
   if (finding.key === "top_tick") {
-    return `The subject entered near the collection's local maximum and later accepted a lower clearing price.`;
+    return `The subject entered near the collection's local maximum and subsequently learned what a market sounds like after the music stops.`;
   }
   if (finding.key === "diamond_hands") {
-    return `Current floor: ${formatNative(toNumber(finding.facts.currentFloorNative) ?? 0)}. The position remains open.`;
+    return `Current floor: ${formatNative(toNumber(finding.facts.currentFloorNative) ?? 0)}. The position remains open, either out of hope or administrative neglect.`;
   }
   if (finding.key === "rugpull") {
     const inactivityDays = toNumber(finding.facts.inactivityDays) ?? 0;
-    return `Collection activity has been dormant for approximately ${Math.round(inactivityDays)} days and the floor is now functionally negligible.`;
+    return `Collection activity has been dormant for approximately ${Math.round(inactivityDays)} days and the floor is now functionally ceremonial.`;
   }
   if (finding.key === "gas_martyrdom") {
-    return `Single-day record: ${formatNative(toNumber(finding.facts.singleDayHighNative) ?? 0)} on ${String(finding.facts.singleDayDate ?? "file")}.`;
+    return `Single-day record: ${formatNative(toNumber(finding.facts.singleDayHighNative) ?? 0)} on ${String(finding.facts.singleDayDate ?? "file")}. The chain appears grateful.`;
   }
-  return `Subject acquired and disposed the asset within a window that the Bureau is forced to recognize as effective.`;
+  return `The subject acquired and disposed the asset within a window that the Bureau is professionally obligated to acknowledge as competent.`;
 }
 
 function buildCounterfactual(finding: RawFinding) {
@@ -390,33 +365,83 @@ function buildCounterfactual(finding: RawFinding) {
 }
 
 function deriveMockRating(caseCount: number, summary: Summary): SeverityRating {
-  if (caseCount >= 5) {
+  const severityScore =
+    caseCount * 2 +
+    summary.rugCount * 3 +
+    summary.heldToZeroCount * 2 +
+    (summary.realizedPnl.startsWith("-") ? 2 : 0) +
+    (summary.unrealizedPnl.startsWith("-") ? 1 : 0) +
+    (summary.gasSpent !== "0 ETH" ? 1 : 0);
+
+  if (severityScore >= 9) {
     return {
       grade: "DDD−",
-      label: "Catastrophic",
+      label: "Utterly Moronic",
       outlook: "Negative",
       blurb:
-        "The subject's onchain conduct, taken in totality, falls below the threshold of investment-grade decision-making. The outlook remains negative pending a credible behavioural intervention."
+        "The subject's onchain conduct, taken in totality, falls beneath the threshold of ordinary embarrassment and into a more durable administrative concern. The outlook remains negative."
+    };
+  }
+
+  if (severityScore >= 6) {
+    return {
+      grade: "CC+",
+      label: "Tragic",
+      outlook: "Negative",
+      blurb:
+        "The Bureau observes repeated lapses in judgment, weak exit discipline, and a pattern of avoidable humiliation insufficiently offset by luck."
     };
   }
 
   if (summary.bestSingleTrade.startsWith("+") || summary.bestSingleTrade.includes("ETH")) {
     return {
       grade: "BB",
-      label: "Recoverable",
+      label: "Not Recoverable",
       outlook: "Stable",
       blurb:
-        "The file contains cause for concern, though not without isolated signs that the subject occasionally identified the correct door by accident."
+        "The file contains cause for concern, though not without isolated signs that the subject occasionally found the correct door and then tried not to make eye contact with it."
     };
   }
 
   return {
-    grade: "CC+",
-    label: "Embarrassing",
-    outlook: "Negative",
+    grade: "B",
+    label: "Concerningly Amateur",
+    outlook: "Stable",
     blurb:
-      "The Bureau observes repeated lapses in judgment and, at present, insufficient evidence of sustained corrective behavior."
+      "The Bureau cannot yet justify a harsher classification, but the available record is not one of confidence, discipline, or refined taste."
   };
+}
+
+function buildCommentary(finding: RawFinding) {
+  if (finding.key === "paper_hands") {
+    return "The subject appears to have encountered a gain, become frightened by its existence, and liquidated the position before the market delivered its more humiliating sequel. The Bureau has seen panic mistaken for prudence before.";
+  }
+  if (finding.key === "top_tick") {
+    return "The subject purchased into full public enthusiasm, thereby performing the useful social function of providing liquidity to people leaving with dignity. The Bureau does not consider this a sustainable specialty.";
+  }
+  if (finding.key === "diamond_hands") {
+    return "This is a textbook case of stubbornness dressed in the language of conviction. The subject continues to hold the asset, which now serves primarily as a decorative record of delayed acceptance.";
+  }
+  if (finding.key === "rugpull") {
+    return "The subject demonstrates a disquieting ability to discover projects moments before they become cautionary tales. The Bureau would hesitate to call it talent, though the repetition is difficult to ignore.";
+  }
+  if (finding.key === "gas_martyrdom") {
+    return "The Bureau is not a religious organization. It is, however, willing to recognize when a subject has converted capital into smoke with unusual devotion.";
+  }
+  return "The Bureau is obliged, in the interest of accuracy, to acknowledge a single instance in which the subject behaved like a person in possession of a plan. We do not expect this to become a trend.";
+}
+
+function buildSeverity(finding: RawFinding) {
+  if (finding.key === "paper_hands") return "Humiliating";
+  if (finding.key === "top_tick") return "Self-Inflicted";
+  if (finding.key === "diamond_hands") return "Lingering";
+  if (finding.key === "rugpull") return "Advanced";
+  if (finding.key === "gas_martyrdom") return "Devotional";
+  return "Annoyingly Positive";
+}
+
+function shortAsset(asset: string) {
+  return asset.length > 34 ? `${asset.slice(0, 34).trim()}…` : asset;
 }
 
 function isLimitedFile(rawFindings: RawFinding[], summary: Summary) {
