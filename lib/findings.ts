@@ -199,19 +199,21 @@ export function buildFindings(params: {
   findings.push(...diamondHands.sort((a, b) => b.sortValue - a.sortValue).slice(0, 1));
   findings.push(...rugpulls.sort((a, b) => b.sortValue - a.sortValue).slice(0, 1));
 
-  findings.push({
-    key: "gas_martyrdom",
-    sortValue: params.gasSummary.totalNative,
-    asset: "Cumulative gas, 2021–present",
-    acquisition: makeEntry(null, params.gasSummary.totalNative, params.gasSummary.totalUsd, "ETH"),
-    disposition: makeEntry(null, null, null, "ETH"),
-    facts: {
-      singleDayHighNative: params.gasSummary.singleDayHighNative,
-      singleDayHighUsd: params.gasSummary.singleDayHighUsd,
-      singleDayDate: params.gasSummary.singleDayDate,
-      transactionCount: params.gasSummary.transactionCount
-    }
-  });
+  if (params.gasSummary.available) {
+    findings.push({
+      key: "gas_martyrdom",
+      sortValue: params.gasSummary.totalNative,
+      asset: "Cumulative gas, 2021–present",
+      acquisition: makeEntry(null, params.gasSummary.totalNative, params.gasSummary.totalUsd, "ETH"),
+      disposition: makeEntry(null, null, null, "ETH"),
+      facts: {
+        singleDayHighNative: params.gasSummary.singleDayHighNative,
+        singleDayHighUsd: params.gasSummary.singleDayHighUsd,
+        singleDayDate: params.gasSummary.singleDayDate,
+        transactionCount: params.gasSummary.transactionCount
+      }
+    });
+  }
 
   if (!findings.some((item) => item.key === "top_tick") && worstRealizedTrade && worstRealizedTrade.nativeLoss < 0) {
     findings.push({
@@ -478,7 +480,9 @@ function buildSummary(
     unrealizedPnl: unrealized !== 0 ? formatUsd(unrealized) : formatNative(unrealizedNative, "ETH"),
     rugCount,
     heldToZeroCount,
-    gasSpent: formatUsd(gasSummary.totalUsd) === "—" ? formatNative(gasSummary.totalNative, "ETH") : formatUsd(gasSummary.totalUsd),
+    gasSpent: gasSummary.available
+      ? (formatUsd(gasSummary.totalUsd) === "—" ? formatNative(gasSummary.totalNative, "ETH") : formatUsd(gasSummary.totalUsd))
+      : "—",
     bestSingleTrade: best ? formatMetric(best.facts.realizedGainUsd, best.facts.realizedGainNative, false) : "0 ETH",
     worstSingleTrade: worst ? formatMetric(negativeValue(worst.facts.forfeitedUsd ?? worst.facts.realizedLossUsd), worst.facts.realizedLossNative ?? worst.facts.forfeitedNative, true) : "0 ETH"
   };

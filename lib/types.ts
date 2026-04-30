@@ -113,6 +113,7 @@ export type CollectionFloorEvent = {
 };
 
 export type GasSummary = {
+  available: boolean;
   totalNative: number;
   totalUsd: number | null;
   singleDayHighNative: number;

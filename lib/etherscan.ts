@@ -18,6 +18,7 @@ export async function fetchGasSummary(wallet: string, txHashes: string[]): Promi
   const apiKey = getEnv("ETHERSCAN_API_KEY");
   if (!apiKey || txHashes.length === 0) {
     return {
+      available: false,
       totalNative: 0,
       totalUsd: null,
       singleDayHighNative: 0,
@@ -44,6 +45,7 @@ export async function fetchGasSummary(wallet: string, txHashes: string[]): Promi
   const payload = (await response.json()) as EtherscanResponse;
   if (!Array.isArray(payload.result)) {
     return {
+      available: false,
       totalNative: 0,
       totalUsd: null,
       singleDayHighNative: 0,
@@ -85,6 +87,7 @@ export async function fetchGasSummary(wallet: string, txHashes: string[]): Promi
   }
 
   return {
+    available: count > 0,
     totalNative: Number(totalWei) / 1e18,
     totalUsd: null,
     singleDayHighNative,
