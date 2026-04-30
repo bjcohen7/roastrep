@@ -64,7 +64,7 @@ async function generateOpenAiCommentary(input: {
             {
               type: "input_text",
               text:
-                "You write satirical NFT audit reports in the voice of the Bureau of Onchain Affairs. Always write in the third person about 'the subject'. The tone is dry, bureaucratic, faintly aggrieved, and never explicitly mean. No crypto slang. No emojis. No exclamation points. Formal sentences. Understatement carries the punchline. Return valid JSON only. No markdown fences or prefatory text."
+                "You write satirical NFT audit reports in the voice of the Bureau of Onchain Affairs. This is a comedy product, and the copy should feel brutal, precise, and funny while remaining formally written. Always write in the third person about 'the subject'. The tone is dry, bureaucratic, disdainful, and ruthlessly specific. The humor should land through exactness, understatement, and institutional disappointment. Be harsher than polite product copy, but do not use slurs, threats, gore, or hate. No crypto-bro slang. No emojis. No exclamation points. Avoid therapy-speak, motivational language, or softeners like 'unfortunately' and 'it appears the subject may have'. Prefer lines that read like a disappointed auditor documenting unforced errors. Return valid JSON only. No markdown fences or prefatory text."
             }
           ]
         },
@@ -100,9 +100,13 @@ async function generateOpenAiCommentary(input: {
                 instructions: [
                   "Preserve the caseStudies order and ids you are given in the reference examples.",
                   "Every wallet must get a unique headlineFinding.text.",
-                  "Use a credit-rating style grade like DDD−, CC+, or BB.",
+                  "Use a credit-rating style grade like DDD−, CC+, BB, or B+.",
                   "Keep category, asset, acquired, and disposed fields unchanged from the reference examples.",
-                  "Rewrite title, aftermath, counterfactual, commentary, severity, headlineFinding, and severityRating.blurb in the Bureau voice."
+                  "Rewrite title, aftermath, counterfactual, commentary, severity, headlineFinding, and severityRating.blurb in the Bureau voice.",
+                  "Make the copy feel more savage and more specific than a normal brand voice.",
+                  "Avoid repeating the exact same titles across different wallets when the facts differ.",
+                  "Verdict labels such as 'Utterly Moronic', 'Tragic', and 'Not Recoverable' are acceptable.",
+                  "If the facts are thin, say so in a cutting way rather than sounding apologetic."
                 ],
                 referenceExamples: mockReference
               })
