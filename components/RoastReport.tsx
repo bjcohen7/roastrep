@@ -309,19 +309,22 @@ export default function RoastReport({
               REVIEWED
             </div>
 
-            <div
+            <a
+              href="/"
               className="mb-2"
               style={{
+                display: "inline-block",
                 fontFamily: fontDisplay,
                 fontStyle: "italic",
                 fontSize: "clamp(18px, 3vw, 24px)",
                 fontVariationSettings: "'SOFT' 100, 'opsz' 144",
                 color: C.seal,
-                letterSpacing: "-0.01em"
+                letterSpacing: "-0.01em",
+                textDecoration: "none"
               }}
             >
               RoastReport.fun
-            </div>
+            </a>
 
             <div className="text-[9px] sm:text-[10px] tracking-[0.28em] uppercase mb-3" style={{ fontFamily: fontMono, color: C.inkSoft }}>
               Findings · Case №{report.caseNumber}
