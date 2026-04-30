@@ -11,7 +11,7 @@ import type { AuditReport, CollectionSnapshot, Holding, NormalizedTrade } from "
 import { deterministicCaseNumber, formatUsd, shortAddress, sha1 } from "@/lib/utils";
 
 const AUDIT_TTL_SECONDS = 60 * 60 * 24;
-const AUDIT_SCHEMA_VERSION = "2026-04-30-asset-labels";
+const AUDIT_SCHEMA_VERSION = "2026-04-30-letter-grades";
 
 export async function getAuditReport(subject: string, options?: { refresh?: boolean }) {
   const resolved = await resolveWalletOrEns(subject);
@@ -131,23 +131,23 @@ function deriveRating(caseCount: number, summary: AuditReport["summary"]) {
 
   if (negativeCases >= 5 || caseCount >= 5) {
     return {
-      grade: "DDD−",
-      label: "Catastrophic",
+      grade: "F",
+      label: "Utterly Moronic",
       outlook: "Negative",
-      blurb: "The subject's onchain conduct falls well below investment-grade judgment. The outlook remains negative."
+      blurb: "The subject's onchain conduct falls well below the threshold of defensible judgment. The outlook remains negative."
     };
   }
   if (negativeCases >= 3) {
     return {
-      grade: "CC+",
-      label: "Embarrassing",
+      grade: "D+",
+      label: "Tragic",
       outlook: "Negative",
       blurb: "The Bureau observes repeated lapses in judgment, interrupted only occasionally by luck."
     };
   }
   return {
-    grade: "BB",
-    label: "Recoverable",
+    grade: "C",
+    label: "Not Recoverable",
     outlook: "Stable",
     blurb: "The file contains cause for concern, though not without isolated signs of adult supervision."
   };

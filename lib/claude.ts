@@ -100,7 +100,7 @@ async function generateOpenAiCommentary(input: {
                 instructions: [
                   "Preserve the caseStudies order and ids you are given in the reference examples.",
                   "Every wallet must get a unique headlineFinding.text.",
-                  "Use a credit-rating style grade like DDD−, CC+, BB, or B+.",
+                  "Use a plain letter grade from A through F, with optional + or - modifiers where useful.",
                   "Keep category, asset, acquired, and disposed fields unchanged from the reference examples.",
                   "Rewrite title, aftermath, counterfactual, commentary, severity, headlineFinding, and severityRating.blurb in the Bureau voice.",
                   "Make the copy feel more savage and more specific than a normal brand voice.",
@@ -240,7 +240,7 @@ function buildMockCommentary(rawFindings: RawFinding[], summary: Summary) {
         loss: "Available activity was insufficient to prove catastrophe, though not to rule out amateurism."
       },
       severityRating: {
-        grade: "B+",
+        grade: "C-",
         label: "Thin File",
         outlook: "Stable",
         blurb:
@@ -399,7 +399,7 @@ function deriveMockRating(caseCount: number, summary: Summary): SeverityRating {
 
   if (severityScore >= 9) {
     return {
-      grade: "DDD−",
+      grade: "F",
       label: "Utterly Moronic",
       outlook: "Negative",
       blurb:
@@ -409,7 +409,7 @@ function deriveMockRating(caseCount: number, summary: Summary): SeverityRating {
 
   if (severityScore >= 6) {
     return {
-      grade: "CC+",
+      grade: "D+",
       label: "Tragic",
       outlook: "Negative",
       blurb:
@@ -419,7 +419,7 @@ function deriveMockRating(caseCount: number, summary: Summary): SeverityRating {
 
   if (summary.bestSingleTrade.startsWith("+") || summary.bestSingleTrade.includes("ETH")) {
     return {
-      grade: "BB",
+      grade: "C",
       label: "Not Recoverable",
       outlook: "Stable",
       blurb:
@@ -428,7 +428,7 @@ function deriveMockRating(caseCount: number, summary: Summary): SeverityRating {
   }
 
   return {
-    grade: "B",
+    grade: "C+",
     label: "Concerningly Amateur",
     outlook: "Stable",
     blurb:
