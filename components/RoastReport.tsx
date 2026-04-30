@@ -26,6 +26,80 @@ const BEN_WALLET_EASTER_EGGS = new Set([
   "0xfebb6f14d86d596c49321318bb83987b373b6c9c"
 ]);
 
+function normalizeReport(report: AuditReport | null, fallbackSubject: string): AuditReport | null {
+  if (!report) return null;
+
+  const wallet = typeof report.wallet === "string" && report.wallet.trim() ? report.wallet : fallbackSubject;
+  const displayName =
+    typeof report.displayName === "string" && report.displayName.trim()
+      ? report.displayName
+      : (wallet ? shortAddress(wallet) : "Unknown Subject");
+
+  return {
+    ...report,
+    wallet,
+    displayName,
+    caseNumber:
+      typeof report.caseNumber === "string" && report.caseNumber.trim()
+        ? report.caseNumber
+        : deterministicCaseNumber(wallet.toLowerCase()),
+    generatedAt:
+      typeof report.generatedAt === "string" && report.generatedAt.trim()
+        ? report.generatedAt
+        : new Date().toISOString(),
+    summary: {
+      periodStart: report.summary?.periodStart ?? "Jan 2021",
+      periodEnd: report.summary?.periodEnd ?? "Present",
+      txnCount: typeof report.summary?.txnCount === "number" ? report.summary.txnCount : 0,
+      realizedPnl: report.summary?.realizedPnl ?? "—",
+      unrealizedPnl: report.summary?.unrealizedPnl ?? "—",
+      rugCount: typeof report.summary?.rugCount === "number" ? report.summary.rugCount : 0,
+      heldToZeroCount: typeof report.summary?.heldToZeroCount === "number" ? report.summary.heldToZeroCount : 0,
+      gasSpent: report.summary?.gasSpent ?? "—",
+      bestSingleTrade: report.summary?.bestSingleTrade ?? "—",
+      worstSingleTrade: report.summary?.worstSingleTrade ?? "—"
+    },
+    caseStudies: Array.isArray(report.caseStudies)
+      ? report.caseStudies.map((caseStudy, index) => ({
+          id: caseStudy?.id ?? String(index + 1),
+          category: caseStudy?.category ?? `Exhibit ${String.fromCharCode(65 + index)}`,
+          title: caseStudy?.title ?? "Record Incomplete",
+          asset: caseStudy?.asset ?? "Unspecified asset",
+          acquired: {
+            date: caseStudy?.acquired?.date ?? "Undated",
+            price: caseStudy?.acquired?.price ?? "—",
+            usd: caseStudy?.acquired?.usd ?? "—"
+          },
+          disposed: {
+            date: caseStudy?.disposed?.date ?? "Undated",
+            price: caseStudy?.disposed?.price ?? "—",
+            usd: caseStudy?.disposed?.usd ?? "—"
+          },
+          aftermath: caseStudy?.aftermath ?? "The supporting record arrived in compromised condition.",
+          counterfactual: caseStudy?.counterfactual ?? "Counterfactual upside unavailable.",
+          commentary: caseStudy?.commentary ?? "The Bureau declines to invent facts where the file has already failed.",
+          severity: caseStudy?.severity ?? "Administrative"
+        }))
+      : [],
+    severityRating: {
+      grade: report.severityRating?.grade ?? "C",
+      label: report.severityRating?.label ?? "Under Review",
+      outlook: report.severityRating?.outlook ?? "Stable",
+      blurb:
+        report.severityRating?.blurb ??
+        "The Bureau encountered an irregular file and has elected to present the surviving findings without overpromising precision."
+    },
+    headlineFinding: {
+      text: report.headlineFinding?.text ?? "The Bureau located irregularities in the subject's file.",
+      loss: report.headlineFinding?.loss ?? "Some portion of the evidence remains too embarrassing to summarize cleanly."
+    },
+    shareBaseUrl:
+      typeof report.shareBaseUrl === "string" && report.shareBaseUrl.trim()
+        ? report.shareBaseUrl
+        : "roastreport.fun"
+  };
+}
+
 export default function RoastReport({
   initialStage = "intake",
   initialSubject = "",
@@ -33,32 +107,33 @@ export default function RoastReport({
   report = null
 }: RoastReportProps) {
   const router = useRouter();
+  const safeReport = normalizeReport(report, initialSubject);
   const [input, setInput] = useState(initialSubject);
-  const [stage, setStage] = useState<AuditStage>(report ? "verdict" : initialStage);
+  const [stage, setStage] = useState<AuditStage>(safeReport ? "verdict" : initialStage);
   const [error, setError] = useState(initialError);
   const [phaseIdx, setPhaseIdx] = useState(0);
-  const [resolvedAddress, setResolvedAddress] = useState(report?.wallet ?? "");
-  const [resolvedEns, setResolvedEns] = useState(report?.displayName.endsWith(".eth") ? report.displayName : "");
+  const [resolvedAddress, setResolvedAddress] = useState(safeReport?.wallet ?? "");
+  const [resolvedEns, setResolvedEns] = useState(safeReport?.displayName?.endsWith(".eth") ? safeReport.displayName : "");
   const [showShare, setShowShare] = useState(false);
   const [tweetVariantIdx, setTweetVariantIdx] = useState(0);
   const [expandedExhibit, setExpandedExhibit] = useState<string | null>(null);
   const [showAllStats, setShowAllStats] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const caseNumber = report?.caseNumber ?? deterministicCaseNumber((resolvedAddress || input || "placeholder").toLowerCase());
-  const subjectName = report?.displayName ?? resolvedEns ?? (resolvedAddress ? shortAddress(resolvedAddress) : "");
-  const reportDisplayName = report?.displayName;
+  const caseNumber = safeReport?.caseNumber ?? deterministicCaseNumber((resolvedAddress || input || "placeholder").toLowerCase());
+  const subjectName = safeReport?.displayName ?? resolvedEns ?? (resolvedAddress ? shortAddress(resolvedAddress) : "");
+  const reportDisplayName = safeReport?.displayName;
   const subjectSlug =
     reportDisplayName?.endsWith(".eth")
       ? reportDisplayName
-      : (report?.wallet ?? resolvedEns ?? resolvedAddress);
+      : (safeReport?.wallet ?? resolvedEns ?? resolvedAddress);
 
-  const summary = report?.summary;
+  const summary = safeReport?.summary;
   const headlineStats = summary ? EMPTY_HEADLINE_STATS(summary) : [];
   const secondaryStats = summary ? EMPTY_SECONDARY_STATS(summary) : [];
   const isEnsSubject = Boolean(resolvedEns || input.trim().toLowerCase().endsWith(".eth"));
   const auditPhases = isEnsSubject ? ENS_AUDIT_PHASES : AUDIT_PHASES;
-  const showBenGif = Boolean(report?.wallet && BEN_WALLET_EASTER_EGGS.has(report.wallet.toLowerCase()));
+  const showBenGif = Boolean(safeReport?.wallet && BEN_WALLET_EASTER_EGGS.has(safeReport.wallet.toLowerCase()));
 
   useEffect(() => {
     if (stage !== "analyzing") return;
@@ -305,7 +380,7 @@ export default function RoastReport({
           </div>
         )}
 
-        {stage === "verdict" && report && (
+        {stage === "verdict" && safeReport && (
           <div className="rr-fadeup relative">
             <div
               className="rr-stamp absolute right-1 sm:right-6 -top-1 sm:top-2 pointer-events-none select-none"
@@ -332,17 +407,17 @@ export default function RoastReport({
             </a>
 
             <div className="text-[9px] sm:text-[10px] tracking-[0.28em] uppercase mb-3" style={{ fontFamily: fontMono, color: C.inkSoft }}>
-              Findings · Case №{report.caseNumber}
+              Findings · Case №{safeReport.caseNumber}
             </div>
 
             <h1 className="leading-none mb-2" style={{ fontFamily: fontDisplay, fontStyle: "italic", fontSize: "clamp(36px, 8.5vw, 68px)", fontVariationSettings: "'SOFT' 100, 'opsz' 144", color: C.ink, letterSpacing: "-0.02em" }}>
               The Verdict
             </h1>
             <div className="text-xs sm:text-sm mb-1" style={{ fontFamily: fontMono, color: C.inkSoft }}>
-              Subject · {report.displayName}
+              Subject · {safeReport.displayName}
             </div>
             <div className="text-[10px] sm:text-xs mb-6" style={{ fontFamily: fontMono, color: C.inkMute }}>
-              Period · {report.summary.periodStart} – {report.summary.periodEnd}
+              Period · {safeReport.summary.periodStart} – {safeReport.summary.periodEnd}
             </div>
 
             <div className="mb-5 p-5 sm:p-8" style={{ background: C.ink, color: C.paper }}>
@@ -352,14 +427,14 @@ export default function RoastReport({
 
               <div className="flex items-baseline gap-4 sm:gap-6 flex-wrap">
                 <div style={{ fontFamily: fontDisplay, fontStyle: "italic", fontSize: "clamp(64px, 18vw, 120px)", fontVariationSettings: "'SOFT' 60, 'opsz' 144", lineHeight: 0.85, color: C.paper, letterSpacing: "-0.04em" }}>
-                  {report.severityRating.grade}
+                  {safeReport.severityRating.grade}
                 </div>
                 <div>
                   <div style={{ fontFamily: fontDisplay, fontStyle: "italic", fontSize: "clamp(20px, 5vw, 28px)", color: C.paper, lineHeight: 1 }}>
-                    {report.severityRating.label}
+                    {safeReport.severityRating.label}
                   </div>
                   <div className="text-[9px] sm:text-[10px] tracking-[0.28em] uppercase mt-1.5" style={{ fontFamily: fontMono, color: C.ruleSoft }}>
-                    Outlook · {report.severityRating.outlook}
+                    Outlook · {safeReport.severityRating.outlook}
                   </div>
                 </div>
               </div>
@@ -370,10 +445,10 @@ export default function RoastReport({
                 Headline Finding
               </div>
               <p style={{ fontFamily: fontDisplay, fontStyle: "italic", fontSize: "clamp(17px, 4.2vw, 24px)", fontVariationSettings: "'SOFT' 100, 'opsz' 144", lineHeight: 1.25, color: C.paper, letterSpacing: "-0.01em" }}>
-                {report.headlineFinding.text}
+                {safeReport.headlineFinding.text}
               </p>
               <div className="mt-3 text-xs sm:text-sm" style={{ fontFamily: fontMono, color: C.ruleSoft }}>
-                {report.headlineFinding.loss}
+                {safeReport.headlineFinding.loss}
               </div>
             </div>
 
@@ -446,10 +521,10 @@ export default function RoastReport({
             <div className="mb-10">
               <div className="text-[10px] tracking-[0.28em] uppercase mb-4 pb-2 flex items-center justify-between" style={{ fontFamily: fontMono, color: C.inkMute, borderBottom: `1px solid ${C.rule}` }}>
                 <span>The Exhibits</span>
-                <span style={{ fontSize: 9 }}>{report.caseStudies.length} cases · tap to read</span>
+                <span style={{ fontSize: 9 }}>{safeReport.caseStudies.length} cases · tap to read</span>
               </div>
               <div className="space-y-2">
-                {report.caseStudies.map((caseStudy) => (
+                {safeReport.caseStudies.map((caseStudy) => (
                   <Exhibit
                     key={caseStudy.id}
                     data={caseStudy}
@@ -461,7 +536,7 @@ export default function RoastReport({
             </div>
 
             <p className="leading-relaxed text-base sm:text-lg italic mb-10 max-w-2xl" style={{ fontFamily: fontBody, color: C.inkSoft }}>
-              {report.severityRating.blurb}
+              {safeReport.severityRating.blurb}
             </p>
 
             <div className="flex flex-wrap gap-3">
@@ -501,16 +576,16 @@ export default function RoastReport({
         </div>
       </div>
 
-      {showShare && report && (
+      {showShare && safeReport && (
         <ShareModal
-          subject={report.displayName}
+          subject={safeReport.displayName}
           subjectSlug={subjectSlug}
-          rating={report.severityRating.grade}
-          label={report.severityRating.label}
-          outlook={report.severityRating.outlook}
-          headline={report.headlineFinding.text}
-          caseNumber={report.caseNumber}
-          shareBaseUrl={report.shareBaseUrl}
+          rating={safeReport.severityRating.grade}
+          label={safeReport.severityRating.label}
+          outlook={safeReport.severityRating.outlook}
+          headline={safeReport.headlineFinding.text}
+          caseNumber={safeReport.caseNumber}
+          shareBaseUrl={safeReport.shareBaseUrl}
           tweetVariantIdx={tweetVariantIdx}
           setTweetVariantIdx={setTweetVariantIdx}
           onClose={() => setShowShare(false)}
