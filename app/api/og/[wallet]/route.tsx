@@ -1,8 +1,10 @@
-import { ImageResponse } from "next/og";
+import { ImageResponse } from "@vercel/og";
 
 import { getAuditReport, getCachedAuditReport, auditVersionHash } from "@/lib/audit";
 import { consumeRateLimit } from "@/lib/cache";
 import { C } from "@/lib/constants";
+
+export const runtime = "edge";
 
 type RouteContext = {
   params: Promise<{ wallet: string }>;
@@ -10,10 +12,9 @@ type RouteContext = {
 
 export async function GET(request: Request, { params }: RouteContext) {
   const { wallet } = await params;
-  const baseUrl = new URL(request.url).origin;
   const [frauncesFont, monoFont] = await Promise.all([
-    fetch(`${baseUrl}/fonts/fraunces-italic.woff`).then((r) => r.arrayBuffer()),
-    fetch(`${baseUrl}/fonts/jetbrains-mono.woff`).then((r) => r.arrayBuffer())
+    fetch(new URL("/fonts/fraunces-italic.woff", request.url)).then((response) => response.arrayBuffer()),
+    fetch(new URL("/fonts/jetbrains-mono.woff", request.url)).then((response) => response.arrayBuffer())
   ]);
 
   const cached = await getCachedAuditReport(wallet);

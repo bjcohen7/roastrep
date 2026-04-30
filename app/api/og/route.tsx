@@ -1,12 +1,13 @@
-import { ImageResponse } from "next/og";
+import { ImageResponse } from "@vercel/og";
 
 import { C } from "@/lib/constants";
 
+export const runtime = "edge";
+
 export async function GET(request: Request) {
-  const baseUrl = new URL(request.url).origin;
   const [frauncesFont, monoFont] = await Promise.all([
-    fetch(`${baseUrl}/fonts/fraunces-italic.woff`).then((r) => r.arrayBuffer()),
-    fetch(`${baseUrl}/fonts/jetbrains-mono.woff`).then((r) => r.arrayBuffer())
+    fetch(new URL("/fonts/fraunces-italic.woff", request.url)).then((response) => response.arrayBuffer()),
+    fetch(new URL("/fonts/jetbrains-mono.woff", request.url)).then((response) => response.arrayBuffer())
   ]);
 
   return new ImageResponse(
