@@ -11,10 +11,11 @@ import type { AuditReport, CollectionSnapshot, Holding, NormalizedTrade } from "
 import { deterministicCaseNumber, formatUsd, shortAddress, sha1 } from "@/lib/utils";
 
 const AUDIT_TTL_SECONDS = 60 * 60 * 24;
+const AUDIT_SCHEMA_VERSION = "2026-04-30-asset-labels";
 
 export async function getAuditReport(subject: string, options?: { refresh?: boolean }) {
   const resolved = await resolveWalletOrEns(subject);
-  const cacheKey = `audit:${resolved.address.toLowerCase()}`;
+  const cacheKey = `audit:${AUDIT_SCHEMA_VERSION}:${resolved.address.toLowerCase()}`;
   const preferAlchemy = Boolean(getEnv("ALCHEMY_API_KEY"));
 
   if (!options?.refresh) {
@@ -118,7 +119,7 @@ export async function getAuditReport(subject: string, options?: { refresh?: bool
 }
 
 export function auditVersionHash(report: AuditReport) {
-  return sha1(`${report.wallet}:${report.generatedAt}:${report.caseStudies.map((caseStudy) => caseStudy.title).join("|")}`);
+  return sha1(`${AUDIT_SCHEMA_VERSION}:${report.wallet}:${report.generatedAt}:${report.caseStudies.map((caseStudy) => caseStudy.title).join("|")}`);
 }
 
 function deriveRating(caseCount: number, summary: AuditReport["summary"]) {
