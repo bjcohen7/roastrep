@@ -8,7 +8,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  # Request the maximum allowed function timeout (26 s on Pro, 10 s on Starter).
-  # This is a hint to Netlify; the actual limit depends on the plan.
   timeout = 26
 
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
