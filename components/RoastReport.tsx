@@ -19,8 +19,8 @@ type RoastReportProps = {
 const fontDisplay = "var(--font-fraunces), serif";
 const fontMono = "var(--font-jetbrains-mono), monospace";
 const fontBody = "var(--font-instrument-serif), serif";
-const ANALYSIS_STEP_DELAYS = [320, 360, 380, 400, 420, 420, 440, 460, 480] as const;
-const ANALYSIS_REDIRECT_DELAY = 320;
+const ANALYSIS_STEP_DELAYS = [460, 520, 560, 600, 640, 680, 720, 760, 820] as const;
+const ANALYSIS_REDIRECT_DELAY = 520;
 
 export default function RoastReport({
   initialStage = "intake",
