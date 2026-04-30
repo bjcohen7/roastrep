@@ -23,6 +23,7 @@ export function buildFindings(params: {
   collections: Map<string, CollectionSnapshot>;
   floorHistory: CollectionFloorMap;
   gasSummary: GasSummary;
+  activityCountOverride?: number;
   nowTimestamp?: number;
 }) {
   const now = params.nowTimestamp ?? Math.floor(Date.now() / 1000);
@@ -284,7 +285,7 @@ export function buildFindings(params: {
   }
 
   const filteredFindings = prioritizeFindings(findings);
-  const summary = buildSummary(params.trades, filteredFindings, params.gasSummary, params.holdings);
+  const summary = buildSummary(params.trades, filteredFindings, params.gasSummary, params.holdings, params.activityCountOverride);
   return { findings: filteredFindings, summary };
 }
 
@@ -452,7 +453,8 @@ function buildSummary(
   trades: NormalizedTrade[],
   findings: RawFinding[],
   gasSummary: GasSummary,
-  holdings: Holding[]
+  holdings: Holding[],
+  activityCountOverride?: number
 ): Summary {
   const sells = trades.filter((trade) => trade.side === "sell");
   const buys = trades.filter((trade) => trade.side === "buy");
@@ -472,19 +474,22 @@ function buildSummary(
   const rugCount = findings.filter((finding) => finding.key === "rugpull").length;
   const heldToZeroCount = findings.filter((finding) => finding.key === "diamond_hands").length;
 
+  const hasPricedTrades = trades.length > 0;
+  const activityCount = hasPricedTrades ? trades.length : (activityCountOverride ?? 0);
+
   return {
     periodStart: "Jan 2021",
     periodEnd: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-    txnCount: trades.length,
-    realizedPnl: realized !== 0 ? formatUsd(realized) : formatNative(realizedNative, "ETH"),
-    unrealizedPnl: unrealized !== 0 ? formatUsd(unrealized) : formatNative(unrealizedNative, "ETH"),
+    txnCount: activityCount,
+    realizedPnl: hasPricedTrades ? (realized !== 0 ? formatUsd(realized) : formatNative(realizedNative, "ETH")) : "Unpriced",
+    unrealizedPnl: hasPricedTrades ? (unrealized !== 0 ? formatUsd(unrealized) : formatNative(unrealizedNative, "ETH")) : "Unpriced",
     rugCount,
     heldToZeroCount,
     gasSpent: gasSummary.available
       ? (formatUsd(gasSummary.totalUsd) === "—" ? formatNative(gasSummary.totalNative, "ETH") : formatUsd(gasSummary.totalUsd))
       : "—",
-    bestSingleTrade: best ? formatMetric(best.facts.realizedGainUsd, best.facts.realizedGainNative, false) : "0 ETH",
-    worstSingleTrade: worst ? formatMetric(negativeValue(worst.facts.forfeitedUsd ?? worst.facts.realizedLossUsd), worst.facts.realizedLossNative ?? worst.facts.forfeitedNative, true) : "0 ETH"
+    bestSingleTrade: best ? formatMetric(best.facts.realizedGainUsd, best.facts.realizedGainNative, false) : (activityCount > 0 ? "Unpriced" : "—"),
+    worstSingleTrade: worst ? formatMetric(negativeValue(worst.facts.forfeitedUsd ?? worst.facts.realizedLossUsd), worst.facts.realizedLossNative ?? worst.facts.forfeitedNative, true) : (activityCount > 0 ? "Unpriced" : "—")
   };
 }
 

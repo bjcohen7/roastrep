@@ -9,9 +9,11 @@ import type {
 
 const ALCHEMY_API_KEY = getEnv("ALCHEMY_API_KEY", "docs-demo");
 const ALCHEMY_BASE_URL = `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`;
+const ALCHEMY_RPC_URL = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 const START_BLOCK = "0";
 const MAX_SALES_PAGES = 2;
 const MAX_HOLDING_PAGES = 2;
+const MAX_TRANSFER_PAGES = 2;
 
 type AlchemySalesResponse = {
   nftSales?: Array<Record<string, any>>;
@@ -26,6 +28,12 @@ type AlchemyNftsResponse = {
 type AlchemyContractMetadata = Record<string, any>;
 
 type AlchemyNftMetadata = Record<string, any>;
+type AlchemyTransfersResponse = {
+  result?: {
+    transfers?: Array<Record<string, any>>;
+    pageKey?: string | null;
+  };
+};
 
 export async function fetchAlchemyTrades(wallet: string): Promise<NormalizedTrade[]> {
   const address = getAddress(wallet);
@@ -107,6 +115,16 @@ export async function fetchAlchemyCollections(contractIds: string[]): Promise<Ma
   return result;
 }
 
+export async function fetchAlchemyTransferActivityCount(wallet: string): Promise<number> {
+  const address = getAddress(wallet);
+  const [incoming, outgoing] = await Promise.all([
+    fetchTransfersForAddress(address, "toAddress"),
+    fetchTransfersForAddress(address, "fromAddress")
+  ]);
+
+  return new Set([...incoming, ...outgoing]).size;
+}
+
 async function fetchSalesForAddress(
   wallet: string,
   queryKey: "buyerAddress" | "sellerAddress",
@@ -179,12 +197,70 @@ async function fetchNftMetadata(contractAddress: string, tokenId: string) {
   return alchemyFetch<AlchemyNftMetadata>(url.toString());
 }
 
+async function fetchTransfersForAddress(wallet: string, queryKey: "fromAddress" | "toAddress") {
+  const uniqueIds = new Set<string>();
+  let pageKey: string | null | undefined;
+  let pageCount = 0;
+
+  do {
+    const payload = await alchemyFetchRpc<AlchemyTransfersResponse["result"]>("alchemy_getAssetTransfers", [
+      {
+        fromBlock: "0x0",
+        toBlock: "latest",
+        [queryKey]: wallet,
+        category: ["erc721", "erc1155"],
+        withMetadata: true,
+        excludeZeroValue: false,
+        maxCount: "0x64",
+        ...(pageKey ? { pageKey } : {})
+      }
+    ]);
+
+    pageKey = payload?.pageKey;
+    pageCount += 1;
+
+    for (const transfer of payload?.transfers ?? []) {
+      const uniqueId = String(transfer.uniqueId ?? `${transfer.hash ?? ""}:${transfer.tokenId ?? ""}:${transfer.rawContract?.address ?? ""}`);
+      if (uniqueId) uniqueIds.add(uniqueId);
+    }
+  } while (pageKey && pageCount < MAX_TRANSFER_PAGES);
+
+  return [...uniqueIds];
+}
+
 async function alchemyFetch<T>(url: string) {
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Alchemy request failed (${response.status})`);
   }
   return response.json() as Promise<T>;
+}
+
+async function alchemyFetchRpc<T>(method: string, params: unknown[]) {
+  const response = await fetch(ALCHEMY_RPC_URL, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json"
+    },
+    body: JSON.stringify({
+      id: 1,
+      jsonrpc: "2.0",
+      method,
+      params
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Alchemy RPC request failed (${response.status})`);
+  }
+
+  const payload = (await response.json()) as { result?: T; error?: { message?: string } };
+  if (payload.error) {
+    throw new Error(payload.error.message ?? "Alchemy RPC request failed");
+  }
+  return payload.result as T;
 }
 
 function weiToNative(value: string | undefined) {
