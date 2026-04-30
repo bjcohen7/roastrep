@@ -53,7 +53,7 @@ export function buildFindings(params: {
       return {
         key: "paper_hands" as const,
         sortValue: comparablePeak - pair.sell.priceNative,
-        asset: pair.buy.tokenName,
+        asset: displayAssetName(pair.buy.collectionName, pair.buy.tokenName, pair.buy.tokenId),
         collectionName: pair.buy.collectionName,
         acquisition: makeEntry(pair.buy.timestamp, pair.buy.priceNative, pair.buy.priceUsd, pair.buy.currencySymbol),
         disposition: makeEntry(pair.sell.timestamp, pair.sell.priceNative, pair.sell.priceUsd, pair.sell.currencySymbol),
@@ -81,7 +81,7 @@ export function buildFindings(params: {
       return {
         key: "top_tick" as const,
         sortValue: pair.buy.priceNative - currentFloor,
-        asset: pair.buy.tokenName,
+        asset: displayAssetName(pair.buy.collectionName, pair.buy.tokenName, pair.buy.tokenId),
         collectionName: pair.buy.collectionName,
         acquisition: makeEntry(pair.buy.timestamp, pair.buy.priceNative, pair.buy.priceUsd, pair.buy.currencySymbol),
         disposition: makeEntry(pair.sell.timestamp, pair.sell.priceNative, pair.sell.priceUsd, pair.sell.currencySymbol),
@@ -104,7 +104,7 @@ export function buildFindings(params: {
       return {
         key: "diamond_hands" as const,
         sortValue: holding.acquiredPriceNative - holding.currentFloorNative,
-        asset: holding.tokenName,
+        asset: displayAssetName(holding.collectionName, holding.tokenName, holding.tokenId),
         collectionName: holding.collectionName,
         acquisition: makeEntry(
           holding.acquiredTimestamp,
@@ -135,7 +135,7 @@ export function buildFindings(params: {
       return {
         key: "rugpull" as const,
         sortValue: holding.acquiredPriceNative,
-        asset: holding.tokenName,
+        asset: displayAssetName(holding.collectionName, holding.tokenName, holding.tokenId),
         collectionName: holding.collectionName,
         acquisition: makeEntry(
           holding.acquiredTimestamp,
@@ -173,7 +173,7 @@ export function buildFindings(params: {
     findings.push({
       key: "notable_competence",
       sortValue: bestTrade.usdGain,
-      asset: bestTrade.pair.buy.tokenName,
+      asset: displayAssetName(bestTrade.pair.buy.collectionName, bestTrade.pair.buy.tokenName, bestTrade.pair.buy.tokenId),
       collectionName: bestTrade.pair.buy.collectionName,
       acquisition: makeEntry(
         bestTrade.pair.buy.timestamp,
@@ -217,7 +217,11 @@ export function buildFindings(params: {
     findings.push({
       key: "top_tick",
       sortValue: Math.abs(worstRealizedTrade.nativeLoss),
-      asset: worstRealizedTrade.pair.buy.tokenName,
+      asset: displayAssetName(
+        worstRealizedTrade.pair.buy.collectionName,
+        worstRealizedTrade.pair.buy.tokenName,
+        worstRealizedTrade.pair.buy.tokenId
+      ),
       collectionName: worstRealizedTrade.pair.buy.collectionName,
       acquisition: makeEntry(
         worstRealizedTrade.pair.buy.timestamp,
@@ -254,7 +258,11 @@ export function buildFindings(params: {
       findings.push({
         key: "diamond_hands",
         sortValue: proxyDiamond.drawdown,
-        asset: proxyDiamond.holding.tokenName,
+        asset: displayAssetName(
+          proxyDiamond.holding.collectionName,
+          proxyDiamond.holding.tokenName,
+          proxyDiamond.holding.tokenId
+        ),
         collectionName: proxyDiamond.holding.collectionName,
         acquisition: makeEntry(
           proxyDiamond.holding.acquiredTimestamp,
@@ -353,6 +361,32 @@ function buildOpenLots(trades: NormalizedTrade[]) {
   }
 
   return openLots;
+}
+
+function displayAssetName(collectionName: string, tokenName: string, tokenId: string) {
+  const cleanedCollection = collectionName?.trim() || "Collection";
+  const cleanedToken = tokenName?.trim() || "";
+  const normalizedTokenId = tokenId?.trim() || "";
+
+  if (!cleanedToken) {
+    return normalizedTokenId ? `${cleanedCollection} #${normalizedTokenId}` : cleanedCollection;
+  }
+
+  if (cleanedToken === cleanedCollection) {
+    return normalizedTokenId ? `${cleanedCollection} #${normalizedTokenId}` : cleanedCollection;
+  }
+
+  if (/^#?\d+$/.test(cleanedToken)) {
+    const suffix = cleanedToken.startsWith("#") ? cleanedToken : `#${cleanedToken}`;
+    return `${cleanedCollection} ${suffix}`;
+  }
+
+  if (/^token\s*#?\d+$/i.test(cleanedToken)) {
+    const numeric = cleanedToken.match(/\d+/)?.[0] ?? normalizedTokenId;
+    return numeric ? `${cleanedCollection} #${numeric}` : cleanedCollection;
+  }
+
+  return cleanedToken;
 }
 
 function peakFloorInWindow(events: CollectionFloorEvent[], start: number, end: number) {
