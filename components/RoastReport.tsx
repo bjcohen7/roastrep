@@ -310,7 +310,7 @@ export default function RoastReport({
                   onKeyDown={(event) => {
                     if (event.key === "Enter") handleSubmit();
                   }}
-                  placeholder="0x… or name.eth"
+                  placeholder="0x.... or ENS"
                   className="rr-input w-full bg-transparent text-base sm:text-lg"
                   style={{ fontFamily: fontMono, color: C.ink, border: "none", padding: 0 }}
                 />
