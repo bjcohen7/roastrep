@@ -1,6 +1,3 @@
 [build]
   command = "npx pnpm@9 install --frozen-lockfile && npx pnpm@9 build"
   publish = ".next"
-
-[functions]
-  timeout = 26
