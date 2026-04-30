@@ -406,13 +406,13 @@ export default function RoastReport({
                     letterSpacing: "-0.01em"
                   }}
                 >
-                  The Bureau recognizes the subject and, against its better instincts, approves.
+                  The Bureau recognizes the subject and will allow a brief victory lap.
                 </div>
                 <div
                   className="mt-2 text-xs sm:text-sm"
                   style={{ fontFamily: fontMono, color: C.inkSoft, lineHeight: 1.6 }}
                 >
-                  Internal note: the file remains absurd, but in a way this office finds familiar.
+                  Internal note: yes, it is him. Please be normal about it.
                 </div>
               </div>
             )}
