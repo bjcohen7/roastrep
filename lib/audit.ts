@@ -8,7 +8,7 @@ import { fetchGasSummary } from "@/lib/etherscan";
 import { buildFindings, defaultCaseStudies } from "@/lib/findings";
 import { fetchCollectionFloorEvents, fetchCollections, fetchUserHoldings, fetchWalletTrades } from "@/lib/reservoir";
 import type { AuditReport, CaseStudy, CollectionSnapshot, Holding, NormalizedTrade } from "@/lib/types";
-import { deterministicCaseNumber, formatUsd, shortAddress, sha1 } from "@/lib/utils";
+import { deterministicCaseNumber, formatDate, formatNative, formatUsd, shortAddress, sha1 } from "@/lib/utils";
 
 const AUDIT_TTL_SECONDS = 60 * 60 * 24;
 const AUDIT_SCHEMA_VERSION = "2026-04-30-activity-fallback";
@@ -94,7 +94,7 @@ export async function getAuditReport(subject: string, options?: { refresh?: bool
   const defaultCases =
     findings.length > 0
       ? defaultCaseStudies(findings)
-      : buildActivityOnlyCaseStudies(summary);
+      : buildActivityOnlyCaseStudies(summary, holdings, collections);
   const defaults = {
     caseStudies: defaultCases,
     headlineFinding: {
@@ -142,7 +142,15 @@ export function auditVersionHash(report: AuditReport) {
 }
 
 function deriveRating(caseCount: number, summary: AuditReport["summary"]) {
-  if (caseCount === 1 && summary.txnCount > 0 && summary.realizedPnl === "Unpriced") {
+  if (summary.txnCount > 0 && summary.realizedPnl === "Unpriced") {
+    if (caseCount >= 3) {
+      return {
+        grade: "D",
+        label: "Suspiciously Busy",
+        outlook: "Negative",
+        blurb: "The Bureau confirmed repeated NFT activity and enough surviving debris to form opinions. The receipts are incomplete, but the judgment problems are not."
+      };
+    }
     return {
       grade: "C-",
       label: "Receipts Missing",
@@ -181,10 +189,14 @@ function deriveRating(caseCount: number, summary: AuditReport["summary"]) {
   };
 }
 
-function buildActivityOnlyCaseStudies(summary: AuditReport["summary"]): CaseStudy[] {
+function buildActivityOnlyCaseStudies(
+  summary: AuditReport["summary"],
+  holdings: Holding[],
+  collections: Map<string, CollectionSnapshot>
+): CaseStudy[] {
   if (summary.txnCount <= 0) return [];
 
-  return [
+  const cases: CaseStudy[] = [
     {
       id: "I",
       category: "Exhibit A · Incomplete Record",
@@ -207,4 +219,101 @@ function buildActivityOnlyCaseStudies(summary: AuditReport["summary"]): CaseStud
       severity: "Underdocumented"
     }
   ];
+
+  const groupedHoldings = new Map<string, Holding[]>();
+  for (const holding of holdings) {
+    const key = holding.collectionId.toLowerCase();
+    const bucket = groupedHoldings.get(key) ?? [];
+    bucket.push(holding);
+    groupedHoldings.set(key, bucket);
+  }
+
+  const dominantCollection = [...groupedHoldings.entries()]
+    .map(([collectionId, bucket]) => ({
+      collectionId,
+      holdings: bucket,
+      count: bucket.length,
+      name: bucket[0]?.collectionName ?? collections.get(collectionId)?.name ?? "Unknown Collection"
+    }))
+    .sort((a, b) => b.count - a.count)[0];
+
+  if (dominantCollection && dominantCollection.count >= 2) {
+    const firstSeen = dominantCollection.holdings
+      .map((holding) => holding.acquiredTimestamp ?? Number.POSITIVE_INFINITY)
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b)[0];
+
+    cases.push({
+      id: "II",
+      category: "Exhibit B · Collection Concentration",
+      title: "A Repeated Commitment to the Same Idea",
+      asset: `${dominantCollection.name} (${dominantCollection.count} tokens retained)`,
+      acquired: {
+        date: Number.isFinite(firstSeen) ? formatDate(firstSeen) : "On file",
+        price: "Unpriced",
+        usd: "—"
+      },
+      disposed: {
+        date: "— still held —",
+        price: "Open inventory",
+        usd: "—"
+      },
+      aftermath: `The Bureau counted ${dominantCollection.count} surviving tokens in ${dominantCollection.name}, suggesting the subject did not merely visit this thesis but attempted residency.`,
+      counterfactual: "Concentration risk is evident even where pricing discipline is not.",
+      commentary:
+        "When a wallet keeps returning to the same collection without producing clean profit records, the Bureau is left to conclude that conviction arrived well before documentation.",
+      severity: "Overcommitted"
+    });
+  }
+
+  const bleakHolding = holdings
+    .filter((holding) => holding.currentFloorNative != null)
+    .sort((a, b) => (a.currentFloorNative ?? Number.POSITIVE_INFINITY) - (b.currentFloorNative ?? Number.POSITIVE_INFINITY))[0];
+
+  if (bleakHolding) {
+    cases.push({
+      id: cases.length === 1 ? "II" : "III",
+      category: cases.length === 1 ? "Exhibit B · Residual Inventory" : "Exhibit C · Residual Inventory",
+      title: "Inventory the Bureau Would Prefer Not to Itemize",
+      asset: displayHoldingAsset(bleakHolding),
+      acquired: {
+        date: bleakHolding.acquiredTimestamp ? formatDate(bleakHolding.acquiredTimestamp) : "On file",
+        price: "Unpriced",
+        usd: "—"
+      },
+      disposed: {
+        date: "— still held —",
+        price: bleakHolding.currentFloorNative != null ? formatNative(bleakHolding.currentFloorNative, "ETH") : "Open inventory",
+        usd: "—"
+      },
+      aftermath: `Current visible floor sits near ${bleakHolding.currentFloorNative != null ? formatNative(bleakHolding.currentFloorNative, "ETH") : "indeterminate levels"}, which is not the sort of phrase that typically precedes vindication.`,
+      counterfactual: "The remaining inventory is documented. The upside is not.",
+      commentary:
+        "Even without acquisition pricing, the surviving position communicates enough on its own. The Bureau does not require a receipt to recognize stale inventory.",
+      severity: "Lingering"
+    });
+  }
+
+  return cases;
+}
+
+function displayHoldingAsset(holding: Holding) {
+  const tokenName = holding.tokenName?.trim();
+  const collectionName = holding.collectionName?.trim() || "Collection";
+  const tokenId = holding.tokenId?.trim();
+
+  if (!tokenName || tokenName === collectionName) {
+    return tokenId ? `${collectionName} #${tokenId}` : collectionName;
+  }
+
+  if (/^#?\d+$/.test(tokenName)) {
+    return `${collectionName} ${tokenName.startsWith("#") ? tokenName : `#${tokenName}`}`;
+  }
+
+  if (/^token\s*#?\d+$/i.test(tokenName)) {
+    const numeric = tokenName.match(/\d+/)?.[0] ?? tokenId;
+    return numeric ? `${collectionName} #${numeric}` : collectionName;
+  }
+
+  return tokenName;
 }
