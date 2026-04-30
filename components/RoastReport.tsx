@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import Exhibit from "@/components/Exhibit";
 import ShareModal from "@/components/ShareModal";
-import { AUDIT_PHASES, C, EMPTY_HEADLINE_STATS, EMPTY_SECONDARY_STATS, ENS_AUDIT_PHASES } from "@/lib/constants";
+import { AUDIT_PHASES, buildFallbackReport, C, EMPTY_HEADLINE_STATS, EMPTY_SECONDARY_STATS, ENS_AUDIT_PHASES } from "@/lib/constants";
 import type { AuditReport, AuditStage } from "@/lib/types";
 import { deterministicCaseNumber, shortAddress } from "@/lib/utils";
 
@@ -123,17 +123,19 @@ export default function RoastReport({
   const [tweetVariantIdx, setTweetVariantIdx] = useState(0);
   const [expandedExhibit, setExpandedExhibit] = useState<string | null>(null);
   const [showAllStats, setShowAllStats] = useState(false);
+  const [fallbackReport, setFallbackReport] = useState<AuditReport | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const caseNumber = safeReport?.caseNumber ?? deterministicCaseNumber((resolvedAddress || input || "placeholder").toLowerCase());
-  const subjectName = safeReport?.displayName ?? resolvedEns ?? (resolvedAddress ? shortAddress(resolvedAddress) : "");
-  const reportDisplayName = safeReport?.displayName;
+  const activeReport = safeReport ?? fallbackReport;
+  const caseNumber = activeReport?.caseNumber ?? deterministicCaseNumber((resolvedAddress || input || "placeholder").toLowerCase());
+  const subjectName = activeReport?.displayName ?? resolvedEns ?? (resolvedAddress ? shortAddress(resolvedAddress) : "");
+  const reportDisplayName = activeReport?.displayName;
   const subjectSlug =
     reportDisplayName?.endsWith(".eth")
       ? reportDisplayName
-      : (safeReport?.wallet ?? resolvedEns ?? resolvedAddress);
+      : (activeReport?.wallet ?? resolvedEns ?? resolvedAddress);
 
-  const summary = safeReport?.summary;
+  const summary = activeReport?.summary;
   const headlineStats = summary ? EMPTY_HEADLINE_STATS(summary) : [];
   const secondaryStats = summary ? EMPTY_SECONDARY_STATS(summary) : [];
   const isEnsSubject = Boolean(resolvedEns || input.trim().toLowerCase().endsWith(".eth"));
@@ -201,25 +203,17 @@ export default function RoastReport({
     if (phaseIdx >= auditPhases.length) {
       if (analysisStatus === "failed") {
         const timeout = window.setTimeout(() => {
-          setStage("intake");
-          setError(analysisError || "The Bureau could not complete this review at present. Please try again shortly.");
-          setPhaseIdx(0);
-          setAnalysisTarget("");
-          setAnalysisStatus("idle");
-          setAnalysisError("");
+          setFallbackReport(buildFallbackReport(analysisTarget));
+          setStage("verdict");
         }, 400);
         return () => window.clearTimeout(timeout);
       }
 
       if (analysisStatus === "pending") {
-        // Phases finished but request still in flight — wait up to 8s more, then fail gracefully.
+        // Phases finished but request still in flight — wait up to 8s more, then show fallback.
         const pendingTimeout = window.setTimeout(() => {
-          setStage("intake");
-          setError("The Bureau's review took longer than expected. Please try again shortly.");
-          setPhaseIdx(0);
-          setAnalysisTarget("");
-          setAnalysisStatus("idle");
-          setAnalysisError("");
+          setFallbackReport(buildFallbackReport(analysisTarget));
+          setStage("verdict");
         }, 8000);
         return () => window.clearTimeout(pendingTimeout);
       }
@@ -478,10 +472,10 @@ export default function RoastReport({
           </div>
         )}
 
-        {stage === "verdict" && safeReport && (
+        {stage === "verdict" && activeReport && (
           <div className="rr-fadeup relative">
             <div
-              className="rr-stamp absolute right-1 sm:right-6 -top-1 sm:top-2 pointer-events-none select-none"
+              className={`rr-stamp absolute right-1 sm:right-6 -top-1 sm:top-2 pointer-events-none select-none${fallbackReport && !safeReport ? " opacity-50" : ""}`}
               style={{ border: `2.5px solid ${C.seal}`, color: C.seal, padding: "5px 9px", fontFamily: fontMono, fontSize: 9, letterSpacing: "0.2em", fontWeight: 500, opacity: 0.78 }}
             >
               REVIEWED
@@ -505,17 +499,17 @@ export default function RoastReport({
             </a>
 
             <div className="text-[9px] sm:text-[10px] tracking-[0.28em] uppercase mb-3" style={{ fontFamily: fontMono, color: C.inkSoft }}>
-              Findings · Case №{safeReport.caseNumber}
+              Findings · Case №{activeReport.caseNumber}
             </div>
 
             <h1 className="leading-none mb-2" style={{ fontFamily: fontDisplay, fontStyle: "italic", fontSize: "clamp(36px, 8.5vw, 68px)", fontVariationSettings: "'SOFT' 100, 'opsz' 144", color: C.ink, letterSpacing: "-0.02em" }}>
               The Verdict
             </h1>
             <div className="text-xs sm:text-sm mb-1" style={{ fontFamily: fontMono, color: C.inkSoft }}>
-              Subject · {safeReport.displayName}
+              Subject · {activeReport.displayName}
             </div>
             <div className="text-[10px] sm:text-xs mb-6" style={{ fontFamily: fontMono, color: C.inkMute }}>
-              Period · {safeReport.summary.periodStart} – {safeReport.summary.periodEnd}
+              Period · {activeReport.summary.periodStart} – {activeReport.summary.periodEnd}
             </div>
 
             <div className="mb-5 p-5 sm:p-8" style={{ background: C.ink, color: C.paper }}>
@@ -525,14 +519,14 @@ export default function RoastReport({
 
               <div className="flex items-baseline gap-4 sm:gap-6 flex-wrap">
                 <div style={{ fontFamily: fontDisplay, fontStyle: "italic", fontSize: "clamp(64px, 18vw, 120px)", fontVariationSettings: "'SOFT' 60, 'opsz' 144", lineHeight: 0.85, color: C.paper, letterSpacing: "-0.04em" }}>
-                  {safeReport.severityRating.grade}
+                  {activeReport.severityRating.grade}
                 </div>
                 <div>
                   <div style={{ fontFamily: fontDisplay, fontStyle: "italic", fontSize: "clamp(20px, 5vw, 28px)", color: C.paper, lineHeight: 1 }}>
-                    {safeReport.severityRating.label}
+                    {activeReport.severityRating.label}
                   </div>
                   <div className="text-[9px] sm:text-[10px] tracking-[0.28em] uppercase mt-1.5" style={{ fontFamily: fontMono, color: C.ruleSoft }}>
-                    Outlook · {safeReport.severityRating.outlook}
+                    Outlook · {activeReport.severityRating.outlook}
                   </div>
                 </div>
               </div>
@@ -543,10 +537,10 @@ export default function RoastReport({
                 Headline Finding
               </div>
               <p style={{ fontFamily: fontDisplay, fontStyle: "italic", fontSize: "clamp(17px, 4.2vw, 24px)", fontVariationSettings: "'SOFT' 100, 'opsz' 144", lineHeight: 1.25, color: C.paper, letterSpacing: "-0.01em" }}>
-                {safeReport.headlineFinding.text}
+                {activeReport.headlineFinding.text}
               </p>
               <div className="mt-3 text-xs sm:text-sm" style={{ fontFamily: fontMono, color: C.ruleSoft }}>
-                {safeReport.headlineFinding.loss}
+                {activeReport.headlineFinding.loss}
               </div>
             </div>
 
@@ -619,10 +613,10 @@ export default function RoastReport({
             <div className="mb-10">
               <div className="text-[10px] tracking-[0.28em] uppercase mb-4 pb-2 flex items-center justify-between" style={{ fontFamily: fontMono, color: C.inkMute, borderBottom: `1px solid ${C.rule}` }}>
                 <span>The Exhibits</span>
-                <span style={{ fontSize: 9 }}>{safeReport.caseStudies.length} cases · tap to read</span>
+                <span style={{ fontSize: 9 }}>{activeReport.caseStudies.length} cases · tap to read</span>
               </div>
               <div className="space-y-2">
-                {safeReport.caseStudies.map((caseStudy) => (
+                {activeReport.caseStudies.map((caseStudy) => (
                   <Exhibit
                     key={caseStudy.id}
                     data={caseStudy}
@@ -634,7 +628,7 @@ export default function RoastReport({
             </div>
 
             <p className="leading-relaxed text-base sm:text-lg italic mb-10 max-w-2xl" style={{ fontFamily: fontBody, color: C.inkSoft }}>
-              {safeReport.severityRating.blurb}
+              {activeReport.severityRating.blurb}
             </p>
 
             <div className="flex flex-wrap gap-3">
@@ -673,16 +667,16 @@ export default function RoastReport({
         </div>
       </div>
 
-      {showShare && safeReport && (
+      {showShare && activeReport && (
         <ShareModal
-          subject={safeReport.displayName}
+          subject={activeReport.displayName}
           subjectSlug={subjectSlug}
-          rating={safeReport.severityRating.grade}
-          label={safeReport.severityRating.label}
-          outlook={safeReport.severityRating.outlook}
-          headline={safeReport.headlineFinding.text}
-          caseNumber={safeReport.caseNumber}
-          shareBaseUrl={safeReport.shareBaseUrl}
+          rating={activeReport.severityRating.grade}
+          label={activeReport.severityRating.label}
+          outlook={activeReport.severityRating.outlook}
+          headline={activeReport.headlineFinding.text}
+          caseNumber={activeReport.caseNumber}
+          shareBaseUrl={activeReport.shareBaseUrl}
           tweetVariantIdx={tweetVariantIdx}
           setTweetVariantIdx={setTweetVariantIdx}
           onClose={() => setShowShare(false)}

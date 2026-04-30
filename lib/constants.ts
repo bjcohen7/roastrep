@@ -1,4 +1,5 @@
-import type { SummaryMetric } from "@/lib/types";
+import type { AuditReport, SummaryMetric } from "@/lib/types";
+import { deterministicCaseNumber, shortAddress } from "@/lib/utils";
 
 export const AUDIT_PHASES = [
   "Subpoenaing onchain history (Jan 2021 – present)",
@@ -73,6 +74,67 @@ export const SECONDARY_STAT_LABELS = [
 ] as const;
 
 export const DEFAULT_SHARE_BASE_URL = "roastreport.fun";
+
+export function buildFallbackReport(subject: string): AuditReport {
+  const isAddress = /^0x[a-fA-F0-9]{40}$/.test(subject);
+  const wallet = isAddress ? subject : subject;
+  const displayName = isAddress ? shortAddress(subject) : subject;
+  const caseNumber = deterministicCaseNumber(subject.toLowerCase());
+  return {
+    wallet,
+    displayName,
+    caseNumber,
+    generatedAt: new Date().toISOString(),
+    summary: {
+      periodStart: "Jan 2021",
+      periodEnd: "Present",
+      txnCount: 0,
+      realizedPnl: "Classified",
+      unrealizedPnl: "—",
+      rugCount: 0,
+      heldToZeroCount: 0,
+      gasSpent: "—",
+      bestSingleTrade: "—",
+      worstSingleTrade: "—"
+    },
+    caseStudies: [
+      {
+        id: "I",
+        category: "Exhibit A · Systems Refusal",
+        title: "The File That Broke the Machine",
+        asset: "The subject's entire onchain history",
+        acquired: {
+          date: "On file",
+          price: "Classified",
+          usd: "—"
+        },
+        disposed: {
+          date: "— pending review —",
+          price: "Classified",
+          usd: "—"
+        },
+        aftermath:
+          "The Bureau's automated review systems encountered the subject's wallet and elected, without human instruction, to stop processing. This has happened before, but never this quickly.",
+        counterfactual: "Unquantifiable. The file was rejected before damages could be tallied.",
+        commentary:
+          "When a file triggers a systems-level refusal, the Bureau does not speculate on cause. It simply notes the outcome and moves on. The subject is welcome to try again when the machines have recovered their composure.",
+        severity: "Institutional Refusal"
+      }
+    ],
+    severityRating: {
+      grade: "F",
+      label: "File Rejected",
+      outlook: "Classified",
+      blurb:
+        "The Bureau's systems declined to process this file. The subject's onchain conduct was deemed too suspicious for standard review protocols. This is not an exoneration."
+    },
+    headlineFinding: {
+      text: "The Bureau attempted to retrieve the subject's records but was met with resistance from its own infrastructure. When the machines refuse to look, the Bureau assigns the only grade consistent with institutional caution.",
+      loss: "Unquantifiable. The file was rejected before damages could be tallied."
+    },
+    shareBaseUrl: "roastreport.fun"
+  };
+}
 
 export const BURN_ADDRESSES = new Set([
   "0x0000000000000000000000000000000000000000",
