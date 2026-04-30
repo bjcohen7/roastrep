@@ -37,7 +37,14 @@ export async function fetchGasSummary(wallet: string, txHashes: string[]): Promi
   url.searchParams.set("sort", "asc");
   url.searchParams.set("apikey", apiKey);
 
-  const response = await fetch(url.toString(), { cache: "no-store" });
+  const controller = new AbortController();
+  const fetchTimeout = setTimeout(() => controller.abort(), 8_000);
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), { cache: "no-store", signal: controller.signal });
+  } finally {
+    clearTimeout(fetchTimeout);
+  }
   if (!response.ok) {
     throw new Error(`Etherscan request failed (${response.status})`);
   }

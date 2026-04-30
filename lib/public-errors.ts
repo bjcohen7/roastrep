@@ -5,7 +5,8 @@ const SAFE_AUDIT_ERRORS = [
   "Burn addresses are not eligible for audit.",
   "Address is invalid.",
   "Contract addresses are not eligible for audit. Please submit an EOA or ENS name.",
-  "Rate limit exceeded."
+  "Rate limit exceeded.",
+  "The Bureau's upstream services took too long to respond. Please try again shortly."
 ] as const;
 
 const DEFAULT_PUBLIC_AUDIT_ERROR =

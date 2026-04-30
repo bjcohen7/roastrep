@@ -21,6 +21,7 @@ const fontMono = "var(--font-jetbrains-mono), monospace";
 const fontBody = "var(--font-instrument-serif), serif";
 const ANALYSIS_STEP_DELAYS = [700, 780, 860, 920, 980, 1040, 1100, 1160, 1220] as const;
 const ANALYSIS_REDIRECT_DELAY = 1240;
+const ANALYSIS_TIMEOUT_MS = 30_000;
 const BEN_WALLET_EASTER_EGGS = new Set([
   "0x6d53c339d2f0ef9698e77ff5bc55961bd53e2c5b",
   "0xfebb6f14d86d596c49321318bb83987b373b6c9c"
@@ -149,6 +150,15 @@ export default function RoastReport({
     setAnalysisStatus("pending");
     setAnalysisError("");
 
+    // Safety timeout: if the request hasn't resolved in ANALYSIS_TIMEOUT_MS, abort and fail.
+    const safetyTimeout = window.setTimeout(() => {
+      if (!cancelled) {
+        controller.abort();
+        setAnalysisStatus("failed");
+        setAnalysisError("The Bureau's review took longer than expected. Please try again shortly.");
+      }
+    }, ANALYSIS_TIMEOUT_MS);
+
     fetch(`/api/audit/${encodeURIComponent(analysisTarget)}`, {
       method: "GET",
       signal: controller.signal,
@@ -174,11 +184,15 @@ export default function RoastReport({
         if (cancelled || fetchError?.name === "AbortError") return;
         setAnalysisStatus("failed");
         setAnalysisError("The Bureau could not complete this review at present. Please try again shortly.");
+      })
+      .finally(() => {
+        window.clearTimeout(safetyTimeout);
       });
 
     return () => {
       cancelled = true;
       controller.abort();
+      window.clearTimeout(safetyTimeout);
     };
   }, [stage, analysisTarget]);
 
@@ -195,6 +209,19 @@ export default function RoastReport({
           setAnalysisError("");
         }, 400);
         return () => window.clearTimeout(timeout);
+      }
+
+      if (analysisStatus === "pending") {
+        // Phases finished but request still in flight — wait up to 8s more, then fail gracefully.
+        const pendingTimeout = window.setTimeout(() => {
+          setStage("intake");
+          setError("The Bureau's review took longer than expected. Please try again shortly.");
+          setPhaseIdx(0);
+          setAnalysisTarget("");
+          setAnalysisStatus("idle");
+          setAnalysisError("");
+        }, 8000);
+        return () => window.clearTimeout(pendingTimeout);
       }
 
       if (analysisStatus !== "ready") return;

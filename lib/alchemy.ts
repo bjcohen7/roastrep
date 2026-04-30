@@ -229,38 +229,51 @@ async function fetchTransfersForAddress(wallet: string, queryKey: "fromAddress" 
 }
 
 async function alchemyFetch<T>(url: string) {
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`Alchemy request failed (${response.status})`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Alchemy request failed (${response.status})`);
+    }
+    return response.json() as Promise<T>;
+  } finally {
+    clearTimeout(timeout);
   }
-  return response.json() as Promise<T>;
 }
 
 async function alchemyFetchRpc<T>(method: string, params: unknown[]) {
-  const response = await fetch(ALCHEMY_RPC_URL, {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json"
-    },
-    body: JSON.stringify({
-      id: 1,
-      jsonrpc: "2.0",
-      method,
-      params
-    })
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(ALCHEMY_RPC_URL, {
+      method: "POST",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json"
+      },
+      body: JSON.stringify({
+        id: 1,
+        jsonrpc: "2.0",
+        method,
+        params
+      })
+    });
 
-  if (!response.ok) {
-    throw new Error(`Alchemy RPC request failed (${response.status})`);
-  }
+    if (!response.ok) {
+      throw new Error(`Alchemy RPC request failed (${response.status})`);
+    }
 
-  const payload = (await response.json()) as { result?: T; error?: { message?: string } };
-  if (payload.error) {
-    throw new Error(payload.error.message ?? "Alchemy RPC request failed");
+    const payload = (await response.json()) as { result?: T; error?: { message?: string } };
+    if (payload.error) {
+      throw new Error(payload.error.message ?? "Alchemy RPC request failed");
+    }
+    return payload.result as T;
+  } finally {
+    clearTimeout(timeout);
   }
-  return payload.result as T;
 }
 
 function weiToNative(value: string | undefined) {

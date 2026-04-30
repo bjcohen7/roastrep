@@ -4,7 +4,10 @@ import { formatDate, formatNative, formatUsd } from "@/lib/utils";
 const USE_MOCK_COMMENTARY = process.env.USE_MOCK_COMMENTARY !== "false";
 const COMMENTARY_PROVIDER = process.env.COMMENTARY_PROVIDER ?? "openai";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+
+/** Maximum time (ms) to wait for OpenAI commentary before falling back to mock. */
+const OPENAI_TIMEOUT_MS = 12_000;
 
 const CATEGORY_LABEL: Record<RawFinding["key"], string> = {
   paper_hands: "Paper Hands",
@@ -32,7 +35,8 @@ export async function generateCommentary(input: {
   if (COMMENTARY_PROVIDER === "openai" && OPENAI_API_KEY) {
     try {
       return await generateOpenAiCommentary(input);
-    } catch {
+    } catch (error) {
+      console.error("[commentary] OpenAI generation failed; using mock fallback.", error instanceof Error ? error.message : error);
       return buildMockCommentary(input.rawFindings, input.summary);
     }
   }
@@ -47,77 +51,87 @@ async function generateOpenAiCommentary(input: {
   summary: Summary;
 }) {
   const mockReference = buildMockCommentary(input.rawFindings, input.summary);
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${OPENAI_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      reasoning: { effort: "minimal" },
-      max_output_tokens: 2200,
-      input: [
-        {
-          role: "system",
-          content: [
-            {
-              type: "input_text",
-              text:
-                "You write satirical NFT audit reports in the voice of the Bureau of Onchain Affairs. This is a comedy product, and the copy should feel brutal, precise, and funny while remaining formally written. Always write in the third person about 'the subject'. The tone is dry, bureaucratic, disdainful, and ruthlessly specific. The humor should land through exactness, understatement, and institutional disappointment. Be harsher than polite product copy, but do not use slurs, threats, gore, or hate. No crypto-bro slang. No emojis. No exclamation points. Avoid therapy-speak, motivational language, or softeners like 'unfortunately' and 'it appears the subject may have'. Prefer lines that read like a disappointed auditor documenting unforced errors. Return valid JSON only. No markdown fences or prefatory text."
-            }
-          ]
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: JSON.stringify({
-                task: "Generate commentary for a wallet audit.",
-                wallet: input.wallet,
-                displayName: input.displayName,
-                summary: input.summary,
-                findings: input.rawFindings,
-                schema: {
-                  caseStudies: [
-                    {
-                      id: "I",
-                      category: "Exhibit A · Paper Hands",
-                      title: "string",
-                      asset: "string",
-                      acquired: { date: "string", price: "string", usd: "string" },
-                      disposed: { date: "string", price: "string", usd: "string" },
-                      aftermath: "string",
-                      counterfactual: "string",
-                      commentary: "string",
-                      severity: "string"
-                    }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        reasoning: { effort: "minimal" },
+        max_output_tokens: 2200,
+        input: [
+          {
+            role: "system",
+            content: [
+              {
+                type: "input_text",
+                text:
+                  "You write satirical NFT audit reports in the voice of the Bureau of Onchain Affairs. This is a comedy product, and the copy should feel brutal, precise, and funny while remaining formally written. Always write in the third person about 'the subject'. The tone is dry, bureaucratic, disdainful, and ruthlessly specific. The humor should land through exactness, understatement, and institutional disappointment. Be harsher than polite product copy, but do not use slurs, threats, gore, or hate. No crypto-bro slang. No emojis. No exclamation points. Avoid therapy-speak, motivational language, or softeners like 'unfortunately' and 'it appears the subject may have'. Prefer lines that read like a disappointed auditor documenting unforced errors. Return valid JSON only. No markdown fences or prefatory text."
+              }
+            ]
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: JSON.stringify({
+                  task: "Generate commentary for a wallet audit.",
+                  wallet: input.wallet,
+                  displayName: input.displayName,
+                  summary: input.summary,
+                  findings: input.rawFindings,
+                  schema: {
+                    caseStudies: [
+                      {
+                        id: "I",
+                        category: "Exhibit A · Paper Hands",
+                        title: "string",
+                        asset: "string",
+                        acquired: { date: "string", price: "string", usd: "string" },
+                        disposed: { date: "string", price: "string", usd: "string" },
+                        aftermath: "string",
+                        counterfactual: "string",
+                        commentary: "string",
+                        severity: "string"
+                      }
+                    ],
+                    headlineFinding: { text: "string", loss: "string" },
+                    severityRating: { grade: "string", label: "string", outlook: "string", blurb: "string" }
+                  },
+                  instructions: [
+                    "Preserve the caseStudies order and ids you are given in the reference examples.",
+                    "Every wallet must get a unique headlineFinding.text.",
+                    "Use a plain letter grade from A through F, with optional + or - modifiers where useful.",
+                    "Keep category, asset, acquired, and disposed fields unchanged from the reference examples.",
+                    "Rewrite title, aftermath, counterfactual, commentary, severity, headlineFinding, and severityRating.blurb in the Bureau voice.",
+                    "Make the copy feel more savage and more specific than a normal brand voice.",
+                    "Avoid repeating the exact same titles across different wallets when the facts differ.",
+                    "Verdict labels such as 'Utterly Moronic', 'Tragic', and 'Not Recoverable' are acceptable.",
+                    "If the facts are thin, say so in a cutting way rather than sounding apologetic.",
+                    "If any finding references Quirkies, explicitly mock that fact. 'Unfortunately they had a Quirkies.' is an acceptable sentence.",
+                    "If any finding references Killabears, briefly acknowledge it as a rare positive or civilized choice without becoming sincere."
                   ],
-                  headlineFinding: { text: "string", loss: "string" },
-                  severityRating: { grade: "string", label: "string", outlook: "string", blurb: "string" }
-                },
-                instructions: [
-                  "Preserve the caseStudies order and ids you are given in the reference examples.",
-                  "Every wallet must get a unique headlineFinding.text.",
-                  "Use a plain letter grade from A through F, with optional + or - modifiers where useful.",
-                  "Keep category, asset, acquired, and disposed fields unchanged from the reference examples.",
-                  "Rewrite title, aftermath, counterfactual, commentary, severity, headlineFinding, and severityRating.blurb in the Bureau voice.",
-                  "Make the copy feel more savage and more specific than a normal brand voice.",
-                  "Avoid repeating the exact same titles across different wallets when the facts differ.",
-                  "Verdict labels such as 'Utterly Moronic', 'Tragic', and 'Not Recoverable' are acceptable.",
-                  "If the facts are thin, say so in a cutting way rather than sounding apologetic.",
-                  "If any finding references Quirkies, explicitly mock that fact. 'Unfortunately they had a Quirkies.' is an acceptable sentence.",
-                  "If any finding references Killabears, briefly acknowledge it as a rare positive or civilized choice without becoming sincere."
-                ],
-                referenceExamples: mockReference
-              })
-            }
-          ]
-        }
-      ]
-    })
-  });
+                  referenceExamples: mockReference
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new Error(`OpenAI commentary request failed (${response.status})`);
