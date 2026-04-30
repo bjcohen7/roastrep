@@ -117,7 +117,7 @@ export function buildFallbackReport(subject: string): AuditReport {
           "The Bureau's automated review systems encountered the subject's wallet and elected, without human instruction, to stop processing. This has happened before, but never this quickly.",
         counterfactual: "Unquantifiable. The file was rejected before damages could be tallied.",
         commentary:
-          "When a file triggers a systems-level refusal, the Bureau does not speculate on cause. It simply notes the outcome and moves on. The subject is welcome to try again when the machines have recovered their composure.",
+          "When a file triggers a systems-level refusal, the Bureau does not speculate on cause. It simply notes that the subject appears to be fleeing the jurisdiction of accountability. The subject is wanted for questioning regarding several suspicious mints.",
         severity: "Institutional Refusal"
       }
     ],
@@ -126,10 +126,10 @@ export function buildFallbackReport(subject: string): AuditReport {
       label: "File Rejected",
       outlook: "Classified",
       blurb:
-        "The Bureau's systems declined to process this file. The subject's onchain conduct was deemed too suspicious for standard review protocols. This is not an exoneration."
+        "The subject has been flagged as a fugitive from onchain accountability. The Bureau's systems declined to process this file, and deportation proceedings from the Ethereum mainnet are currently under review."
     },
     headlineFinding: {
-      text: "The Bureau attempted to retrieve the subject's records but was met with resistance from its own infrastructure. When the machines refuse to look, the Bureau assigns the only grade consistent with institutional caution.",
+      text: "The Bureau attempted to retrieve the subject's records but was met with resistance from its own infrastructure. Given the subject's status as a wanted onchain fugitive, the Bureau has issued a standing warrant and referred the matter to deportation authorities.",
       loss: "Unquantifiable. The file was rejected before damages could be tallied."
     },
     shareBaseUrl: "roastreport.fun"
