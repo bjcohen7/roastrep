@@ -76,7 +76,7 @@ export const SECONDARY_STAT_LABELS = [
   "Best trade"
 ] as const;
 
-export const DEFAULT_SHARE_BASE_URL = "theroastreport.xyz";
+export const DEFAULT_SHARE_BASE_URL = "roastreport.fun";
 
 export const BURN_ADDRESSES = new Set([
   "0x0000000000000000000000000000000000000000",

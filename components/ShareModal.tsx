@@ -37,9 +37,13 @@ export default function ShareModal({
   onClose
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [editableText, setEditableText] = useState(SHARE_TEXT_VARIANTS[tweetVariantIdx](rating));
-  const permalink = `${shareBaseUrl}/${subjectSlug}`;
-  const fullUrl = shareBaseUrl.startsWith("http") ? `${shareBaseUrl}/${subjectSlug}` : `https://${permalink}`;
+  const encodedSubjectSlug = encodeURIComponent(subjectSlug);
+  const normalizedBaseUrl = shareBaseUrl.startsWith("http") ? shareBaseUrl : `https://${shareBaseUrl}`;
+  const fullUrl = `${normalizedBaseUrl}/${encodedSubjectSlug}`;
+  const ogImageUrl = `${normalizedBaseUrl}/api/og/${encodedSubjectSlug}`;
 
   useEffect(() => {
     setEditableText(SHARE_TEXT_VARIANTS[tweetVariantIdx](rating));
@@ -65,6 +69,35 @@ export default function ShareModal({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {}
+  }
+
+  async function copyCaptionAndLink() {
+    try {
+      await navigator.clipboard.writeText(composed);
+      setCopiedAll(true);
+      window.setTimeout(() => setCopiedAll(false), 1800);
+    } catch {}
+  }
+
+  async function downloadCard() {
+    try {
+      setDownloading(true);
+      const response = await fetch(ogImageUrl, { cache: "no-store" });
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = `roast-report-${subjectSlug.replace(/[^a-zA-Z0-9.-]+/g, "-")}.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(ogImageUrl, "_blank", "noopener");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   return (
@@ -128,7 +161,7 @@ export default function ShareModal({
             outlook={outlook}
             headline={headline}
             caseNumber={caseNumber}
-            shareBaseUrl={shareBaseUrl.replace(/^https?:\/\//, "")}
+            shareBaseUrl={normalizedBaseUrl.replace(/^https?:\/\//, "")}
           />
         </div>
 
@@ -214,6 +247,30 @@ export default function ShareModal({
             }}
           >
             <span>Cast on Farcaster</span>
+          </button>
+          <button
+            onClick={copyCaptionAndLink}
+            className="rr-btn py-3.5 text-[10px] tracking-[0.3em] uppercase transition-colors flex items-center justify-center gap-2"
+            style={{
+              fontFamily: fontMono,
+              background: C.paper,
+              color: C.ink,
+              border: `1.5px solid ${C.ink}`
+            }}
+          >
+            <span>{copiedAll ? "Copied Caption" : "Copy Caption + Link"}</span>
+          </button>
+          <button
+            onClick={downloadCard}
+            className="rr-btn py-3.5 text-[10px] tracking-[0.3em] uppercase transition-colors flex items-center justify-center gap-2"
+            style={{
+              fontFamily: fontMono,
+              background: C.paper,
+              color: C.ink,
+              border: `1.5px solid ${C.ink}`
+            }}
+          >
+            <span>{downloading ? "Preparing Card" : "Download Card PNG"}</span>
           </button>
         </div>
 

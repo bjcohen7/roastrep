@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import RoastReport from "@/components/RoastReport";
-import { getAuditReport } from "@/lib/audit";
+import { auditVersionHash, getAuditReport } from "@/lib/audit";
 
 type WalletPageProps = {
   params: Promise<{ wallet: string }>;
@@ -12,19 +12,40 @@ export async function generateMetadata({ params }: WalletPageProps): Promise<Met
   try {
     const report = await getAuditReport(wallet);
     const baseUrl = report.shareBaseUrl.startsWith("http") ? report.shareBaseUrl : `https://${report.shareBaseUrl}`;
+    const canonicalPath = `/${encodeURIComponent(wallet)}`;
+    const ogImageUrl = `${baseUrl}/api/og/${encodeURIComponent(wallet)}?v=${auditVersionHash(report)}`;
+    const description = `${report.severityRating.grade}. ${report.severityRating.label}. Outlook ${report.severityRating.outlook}.`;
+    const title = `The Roast Report — ${report.displayName}`;
+    const imageAlt = `Roast Report card for ${report.displayName}: ${report.severityRating.grade}, ${report.severityRating.label}, outlook ${report.severityRating.outlook}.`;
     return {
-      title: `The Roast Report — ${report.displayName}`,
-      description: `${report.severityRating.grade}. ${report.severityRating.label}. Outlook ${report.severityRating.outlook}.`,
+      title,
+      description,
+      alternates: {
+        canonical: canonicalPath
+      },
       openGraph: {
-        title: `The Roast Report — ${report.displayName}`,
-        description: `${report.severityRating.grade}. ${report.severityRating.label}. Outlook ${report.severityRating.outlook}.`,
-        images: [`${baseUrl}/api/og/${encodeURIComponent(wallet)}`]
+        type: "website",
+        url: `${baseUrl}${canonicalPath}`,
+        siteName: "The Roast Report",
+        title,
+        description,
+        images: [
+          {
+            url: ogImageUrl,
+            width: 1200,
+            height: 630,
+            alt: imageAlt
+          }
+        ]
       },
       twitter: {
         card: "summary_large_image",
-        title: `The Roast Report — ${report.displayName}`,
-        description: `${report.severityRating.grade}. ${report.severityRating.label}. Outlook ${report.severityRating.outlook}.`,
-        images: [`${baseUrl}/api/og/${encodeURIComponent(wallet)}`]
+        title,
+        description,
+        images: [ogImageUrl]
+      },
+      other: {
+        "twitter:image:alt": imageAlt
       }
     };
   } catch {
