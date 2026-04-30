@@ -1,10 +1,11 @@
-import { ImageResponse } from "@vercel/og";
+import { readFile } from "fs/promises";
+import { join } from "path";
+
+import { ImageResponse } from "next/og";
 
 import { getAuditReport, getCachedAuditReport, auditVersionHash } from "@/lib/audit";
 import { consumeRateLimit } from "@/lib/cache";
 import { C } from "@/lib/constants";
-
-export const runtime = "edge";
 
 type RouteContext = {
   params: Promise<{ wallet: string }>;
@@ -12,9 +13,10 @@ type RouteContext = {
 
 export async function GET(request: Request, { params }: RouteContext) {
   const { wallet } = await params;
+  const fontDir = join(process.cwd(), "public", "fonts");
   const [frauncesFont, monoFont] = await Promise.all([
-    fetch(new URL("/fonts/fraunces-italic.woff", request.url)).then((response) => response.arrayBuffer()),
-    fetch(new URL("/fonts/jetbrains-mono.woff", request.url)).then((response) => response.arrayBuffer())
+    readFile(join(fontDir, "fraunces-italic.woff")),
+    readFile(join(fontDir, "jetbrains-mono.woff"))
   ]);
 
   const cached = await getCachedAuditReport(wallet);
@@ -194,7 +196,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   );
 }
 
-function buildGenericOgImage(frauncesFont: ArrayBuffer, monoFont: ArrayBuffer) {
+function buildGenericOgImage(frauncesFont: Buffer, monoFont: Buffer) {
   return new ImageResponse(
     (
       <div
