@@ -93,7 +93,14 @@ export default function RoastReport({
     .rr-grain { position: fixed; inset: 0; pointer-events: none; z-index: 50; mix-blend-mode: multiply; opacity: 0.18; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/></svg>"); }
     .rr-input::placeholder { color: ${C.rule}; font-style: italic; }
     .rr-input:focus { outline: none; }
-    .rr-btn:hover { background: ${C.ink}; color: ${C.paper}; }
+    .rr-btn { transition: background-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease, letter-spacing 180ms ease; }
+    .rr-btn:hover {
+      background: ${C.ink};
+      color: ${C.paper};
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(33, 24, 20, 0.14);
+      letter-spacing: 0.36em;
+    }
     .rr-btn:active { transform: translateY(1px); }
     .rr-btn-dark:hover { background: ${C.paper}; color: ${C.ink}; }
     .rr-btn-ghost:hover { background: rgba(0,0,0,0.04); }
