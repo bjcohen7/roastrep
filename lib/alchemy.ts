@@ -93,23 +93,33 @@ export async function fetchAlchemyHoldings(wallet: string): Promise<Holding[]> {
 
 export async function fetchAlchemyCollections(contractIds: string[]): Promise<Map<string, CollectionSnapshot>> {
   const result = new Map<string, CollectionSnapshot>();
+  const uniqueContracts = [...new Set(contractIds)].filter(Boolean);
 
-  for (const contract of [...new Set(contractIds)].filter(Boolean)) {
-    const contractUrl = new URL(`${ALCHEMY_BASE_URL}/getContractMetadata`);
-    contractUrl.searchParams.set("contractAddress", contract);
-    const metadata = await alchemyFetch<AlchemyContractMetadata>(contractUrl.toString()).catch(() => null);
-    if (!metadata) continue;
-
-    result.set(contract.toLowerCase(), {
-      id: contract,
-      name: String(metadata.name ?? metadata.openseaMetadata?.collectionName ?? contract),
-      image: metadata.openseaMetadata?.imageUrl ?? null,
-      currentFloorNative: numberOrNull(metadata.openseaMetadata?.floorPrice),
-      currentFloorUsd: null,
-      volume30d: null,
-      volumeAllTime: null,
-      tokenCount: numberOrNull(metadata.totalSupply)
-    });
+  // Fetch all contract metadata in parallel (capped at 10 concurrent) to avoid sequential latency.
+  const CONCURRENCY = 10;
+  for (let i = 0; i < uniqueContracts.length; i += CONCURRENCY) {
+    const batch = uniqueContracts.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (contract) => {
+        const contractUrl = new URL(`${ALCHEMY_BASE_URL}/getContractMetadata`);
+        contractUrl.searchParams.set("contractAddress", contract);
+        const metadata = await alchemyFetch<AlchemyContractMetadata>(contractUrl.toString()).catch(() => null);
+        return { contract, metadata };
+      })
+    );
+    for (const { contract, metadata } of results) {
+      if (!metadata) continue;
+      result.set(contract.toLowerCase(), {
+        id: contract,
+        name: String(metadata.name ?? metadata.openseaMetadata?.collectionName ?? contract),
+        image: metadata.openseaMetadata?.imageUrl ?? null,
+        currentFloorNative: numberOrNull(metadata.openseaMetadata?.floorPrice),
+        currentFloorUsd: null,
+        volume30d: null,
+        volumeAllTime: null,
+        tokenCount: numberOrNull(metadata.totalSupply)
+      });
+    }
   }
 
   return result;

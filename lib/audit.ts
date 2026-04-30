@@ -37,8 +37,11 @@ export async function getAuditReport(subject: string, options?: { refresh?: bool
 
   try {
     if (preferAlchemy) {
-      trades = await fetchAlchemyTrades(resolved.address);
-      holdings = await fetchAlchemyHoldings(resolved.address);
+      // Fetch trades and holdings in parallel — this is the main latency win.
+      [trades, holdings] = await Promise.all([
+        fetchAlchemyTrades(resolved.address),
+        fetchAlchemyHoldings(resolved.address)
+      ]);
       if (trades.length === 0) {
         activityCountOverride = await fetchAlchemyTransferActivityCount(resolved.address).catch(() => 0);
       }
@@ -48,8 +51,11 @@ export async function getAuditReport(subject: string, options?: { refresh?: bool
       ];
       collections = await fetchAlchemyCollections(collectionIds);
     } else {
-      trades = await fetchWalletTrades(resolved.address);
-      holdings = await fetchUserHoldings(resolved.address);
+      // Fetch trades and holdings in parallel for the Reservoir path too.
+      [trades, holdings] = await Promise.all([
+        fetchWalletTrades(resolved.address),
+        fetchUserHoldings(resolved.address)
+      ]);
       const collectionIds = [
         ...trades.map((trade) => trade.collectionId),
         ...holdings.map((holding) => holding.collectionId)
@@ -65,8 +71,11 @@ export async function getAuditReport(subject: string, options?: { refresh?: bool
       }
     }
   } catch {
-    trades = await fetchAlchemyTrades(resolved.address);
-    holdings = await fetchAlchemyHoldings(resolved.address);
+    // Fallback: try Alchemy directly, again in parallel.
+    [trades, holdings] = await Promise.all([
+      fetchAlchemyTrades(resolved.address).catch(() => [] as NormalizedTrade[]),
+      fetchAlchemyHoldings(resolved.address).catch(() => [] as Holding[])
+    ]);
     if (trades.length === 0) {
       activityCountOverride = await fetchAlchemyTransferActivityCount(resolved.address).catch(() => 0);
     }
