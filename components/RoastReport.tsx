@@ -406,7 +406,7 @@ export default function RoastReport({
                     letterSpacing: "-0.01em"
                   }}
                 >
-                  The Bureau recognizes the subject and will allow a brief victory lap.
+                  The Bureau recognizes the subject and has elected, reluctantly, to let him cook.
                 </div>
                 <div
                   className="mt-2 text-xs sm:text-sm"
