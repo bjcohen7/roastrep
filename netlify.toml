@@ -1,5 +1,5 @@
 [build]
-  command = "corepack pnpm build"
+  command = "npx pnpm@9 install --frozen-lockfile && npx pnpm@9 build"
   publish = ".next"
 
 [build.environment]
