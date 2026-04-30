@@ -40,8 +40,16 @@ export async function resolveWalletOrEns(input: string) {
 
   if (parsed.type === "address") {
     await assertAuditEligible(parsed.value);
-  const ensName = await publicClient.getEnsName({ address: parsed.value });
-  return {
+    let ensName: string | null = null;
+    try {
+      ensName = await Promise.race([
+        publicClient.getEnsName({ address: parsed.value }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
+      ]);
+    } catch {
+      // Reverse ENS lookup failed — proceed without ENS name
+    }
+    return {
       inputType: parsed.type,
       address: parsed.value,
       ensName

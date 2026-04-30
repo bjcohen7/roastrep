@@ -24,6 +24,13 @@ export async function getAuditReport(subject: string, options?: { refresh?: bool
   const cacheKey = `audit:${AUDIT_SCHEMA_VERSION}:${resolved.address.toLowerCase()}`;
   const preferAlchemy = Boolean(getEnv("ALCHEMY_API_KEY"));
 
+  // Early cache check for raw hex addresses — avoids expensive RPC calls in resolveWalletOrEns
+  if (!options?.refresh && /^0x[a-fA-F0-9]{40}$/.test(subject)) {
+    const earlyCacheKey = `audit:${AUDIT_SCHEMA_VERSION}:${subject.toLowerCase()}`;
+    const earlyCached = await getCachedJson<AuditReport>(earlyCacheKey);
+    if (earlyCached) return earlyCached;
+  }
+
   if (!options?.refresh) {
     const cached = await getCachedJson<AuditReport>(cacheKey);
     if (cached) return cached;
