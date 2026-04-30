@@ -559,7 +559,7 @@ export default function RoastReport({
         )}
 
         <div
-          className="mt-12 sm:mt-16 pt-4 flex items-center justify-between text-[9px] tracking-[0.28em] uppercase"
+          className="mt-12 sm:mt-16 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 text-[9px] tracking-[0.28em] uppercase"
           style={{ borderTop: `1px solid ${C.rule}`, fontFamily: fontMono, color: C.rule }}
         >
           <span>Confidential</span>
@@ -567,7 +567,6 @@ export default function RoastReport({
             href="https://x.com/mr_benft"
             target="_blank"
             rel="noreferrer"
-            className="hidden sm:inline"
             style={{ color: C.rule, textDecoration: "none" }}
           >
             A @mr_benft Production
