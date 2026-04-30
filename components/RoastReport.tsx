@@ -19,6 +19,8 @@ type RoastReportProps = {
 const fontDisplay = "var(--font-fraunces), serif";
 const fontMono = "var(--font-jetbrains-mono), monospace";
 const fontBody = "var(--font-instrument-serif), serif";
+const ANALYSIS_STEP_DELAYS = [320, 360, 380, 400, 420, 420, 440, 460, 480] as const;
+const ANALYSIS_REDIRECT_DELAY = 320;
 
 export default function RoastReport({
   initialStage = "intake",
@@ -59,10 +61,11 @@ export default function RoastReport({
       const timeout = window.setTimeout(() => {
         const target = input.trim().toLowerCase();
         router.push(`/${encodeURIComponent(target)}`);
-      }, 700);
+      }, ANALYSIS_REDIRECT_DELAY);
       return () => window.clearTimeout(timeout);
     }
-    const timeout = window.setTimeout(() => setPhaseIdx((value) => value + 1), 750);
+    const stepDelay = ANALYSIS_STEP_DELAYS[Math.min(phaseIdx, ANALYSIS_STEP_DELAYS.length - 1)] ?? 420;
+    const timeout = window.setTimeout(() => setPhaseIdx((value) => value + 1), stepDelay);
     return () => window.clearTimeout(timeout);
   }, [stage, phaseIdx, input, router, auditPhases.length]);
 
@@ -304,6 +307,20 @@ export default function RoastReport({
               style={{ border: `2.5px solid ${C.seal}`, color: C.seal, padding: "5px 9px", fontFamily: fontMono, fontSize: 9, letterSpacing: "0.2em", fontWeight: 500, opacity: 0.78 }}
             >
               REVIEWED
+            </div>
+
+            <div
+              className="mb-2"
+              style={{
+                fontFamily: fontDisplay,
+                fontStyle: "italic",
+                fontSize: "clamp(18px, 3vw, 24px)",
+                fontVariationSettings: "'SOFT' 100, 'opsz' 144",
+                color: C.seal,
+                letterSpacing: "-0.01em"
+              }}
+            >
+              RoastReport.fun
             </div>
 
             <div className="text-[9px] sm:text-[10px] tracking-[0.28em] uppercase mb-3" style={{ fontFamily: fontMono, color: C.inkSoft }}>
