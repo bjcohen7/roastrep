@@ -443,7 +443,15 @@ export default function RoastReport({
           style={{ borderTop: `1px solid ${C.rule}`, fontFamily: fontMono, color: C.rule }}
         >
           <span>Confidential</span>
-          <span className="hidden sm:inline">For Entertainment Purposes</span>
+          <a
+            href="https://x.com/mr_benft"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden sm:inline"
+            style={{ color: C.rule, textDecoration: "none" }}
+          >
+            A @mr_benft Production
+          </a>
           <span>Folio I/I</span>
         </div>
       </div>
