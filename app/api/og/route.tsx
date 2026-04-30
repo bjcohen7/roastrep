@@ -1,15 +1,12 @@
-import { readFile } from "fs/promises";
-import { join } from "path";
-
 import { ImageResponse } from "next/og";
 
 import { C } from "@/lib/constants";
 
 export async function GET(request: Request) {
-  const fontDir = join(process.cwd(), "public", "fonts");
+  const baseUrl = new URL(request.url).origin;
   const [frauncesFont, monoFont] = await Promise.all([
-    readFile(join(fontDir, "fraunces-italic.woff")),
-    readFile(join(fontDir, "jetbrains-mono.woff"))
+    fetch(`${baseUrl}/fonts/fraunces-italic.woff`).then((r) => r.arrayBuffer()),
+    fetch(`${baseUrl}/fonts/jetbrains-mono.woff`).then((r) => r.arrayBuffer())
   ]);
 
   return new ImageResponse(

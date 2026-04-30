@@ -1,6 +1,3 @@
-import { readFile } from "fs/promises";
-import { join } from "path";
-
 import { ImageResponse } from "next/og";
 
 import { getAuditReport, getCachedAuditReport, auditVersionHash } from "@/lib/audit";
@@ -13,10 +10,10 @@ type RouteContext = {
 
 export async function GET(request: Request, { params }: RouteContext) {
   const { wallet } = await params;
-  const fontDir = join(process.cwd(), "public", "fonts");
+  const baseUrl = new URL(request.url).origin;
   const [frauncesFont, monoFont] = await Promise.all([
-    readFile(join(fontDir, "fraunces-italic.woff")),
-    readFile(join(fontDir, "jetbrains-mono.woff"))
+    fetch(`${baseUrl}/fonts/fraunces-italic.woff`).then((r) => r.arrayBuffer()),
+    fetch(`${baseUrl}/fonts/jetbrains-mono.woff`).then((r) => r.arrayBuffer())
   ]);
 
   const cached = await getCachedAuditReport(wallet);
@@ -196,7 +193,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   );
 }
 
-function buildGenericOgImage(frauncesFont: Buffer, monoFont: Buffer) {
+function buildGenericOgImage(frauncesFont: ArrayBuffer, monoFont: ArrayBuffer) {
   return new ImageResponse(
     (
       <div
