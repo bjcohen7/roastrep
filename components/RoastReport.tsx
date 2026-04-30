@@ -113,6 +113,9 @@ export default function RoastReport({
   const [stage, setStage] = useState<AuditStage>(safeReport ? "verdict" : initialStage);
   const [error, setError] = useState(initialError);
   const [phaseIdx, setPhaseIdx] = useState(0);
+  const [analysisTarget, setAnalysisTarget] = useState("");
+  const [analysisStatus, setAnalysisStatus] = useState<"idle" | "pending" | "ready" | "failed">("idle");
+  const [analysisError, setAnalysisError] = useState("");
   const [resolvedAddress, setResolvedAddress] = useState(safeReport?.wallet ?? "");
   const [resolvedEns, setResolvedEns] = useState(safeReport?.displayName?.endsWith(".eth") ? safeReport.displayName : "");
   const [showShare, setShowShare] = useState(false);
@@ -138,17 +141,73 @@ export default function RoastReport({
 
   useEffect(() => {
     if (stage !== "analyzing") return;
+    if (!analysisTarget) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    setAnalysisStatus("pending");
+    setAnalysisError("");
+
+    fetch(`/api/audit/${encodeURIComponent(analysisTarget)}`, {
+      method: "GET",
+      signal: controller.signal,
+      cache: "no-store"
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (cancelled) return;
+
+        if (!response.ok) {
+          const publicError =
+            typeof payload?.error === "string" && payload.error.trim()
+              ? payload.error
+              : "The Bureau could not complete this review at present. Please try again shortly.";
+          setAnalysisStatus("failed");
+          setAnalysisError(publicError);
+          return;
+        }
+
+        setAnalysisStatus("ready");
+      })
+      .catch((fetchError) => {
+        if (cancelled || fetchError?.name === "AbortError") return;
+        setAnalysisStatus("failed");
+        setAnalysisError("The Bureau could not complete this review at present. Please try again shortly.");
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [stage, analysisTarget]);
+
+  useEffect(() => {
+    if (stage !== "analyzing") return;
     if (phaseIdx >= auditPhases.length) {
+      if (analysisStatus === "failed") {
+        const timeout = window.setTimeout(() => {
+          setStage("intake");
+          setError(analysisError || "The Bureau could not complete this review at present. Please try again shortly.");
+          setPhaseIdx(0);
+          setAnalysisTarget("");
+          setAnalysisStatus("idle");
+          setAnalysisError("");
+        }, 400);
+        return () => window.clearTimeout(timeout);
+      }
+
+      if (analysisStatus !== "ready") return;
+
       const timeout = window.setTimeout(() => {
-        const target = input.trim().toLowerCase();
-        router.push(`/${encodeURIComponent(target)}`);
+        router.push(`/${encodeURIComponent(analysisTarget)}`);
       }, ANALYSIS_REDIRECT_DELAY);
       return () => window.clearTimeout(timeout);
     }
     const stepDelay = ANALYSIS_STEP_DELAYS[Math.min(phaseIdx, ANALYSIS_STEP_DELAYS.length - 1)] ?? 420;
     const timeout = window.setTimeout(() => setPhaseIdx((value) => value + 1), stepDelay);
     return () => window.clearTimeout(timeout);
-  }, [stage, phaseIdx, input, router, auditPhases.length]);
+  }, [stage, phaseIdx, router, auditPhases.length, analysisStatus, analysisError, analysisTarget]);
 
   useEffect(() => {
     if (!showShare) return;
@@ -228,6 +287,9 @@ export default function RoastReport({
     }
     setStage("analyzing");
     setPhaseIdx(0);
+    setAnalysisTarget(result.value);
+    setAnalysisStatus("idle");
+    setAnalysisError("");
   }
 
   function reset() {
@@ -235,6 +297,9 @@ export default function RoastReport({
     setInput("");
     setError("");
     setPhaseIdx(0);
+    setAnalysisTarget("");
+    setAnalysisStatus("idle");
+    setAnalysisError("");
     setResolvedAddress("");
     setResolvedEns("");
     setExpandedExhibit(null);
@@ -595,8 +660,14 @@ export default function RoastReport({
           setTweetVariantIdx={setTweetVariantIdx}
           onClose={() => setShowShare(false)}
         />
-      )}
-    </div>
+        )}
+
+        {stage === "analyzing" && phaseIdx >= auditPhases.length && analysisStatus === "pending" && (
+          <div className="mt-6 text-center text-xs italic rr-fadein" style={{ color: C.inkSoft, fontFamily: fontBody }}>
+            The Bureau has finished its ceremonial checklist and is waiting on the chain to produce the receipts.
+          </div>
+        )}
+      </div>
   );
 }
 
