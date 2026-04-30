@@ -19,3 +19,13 @@ export function requireEnv(name: (typeof requiredAtRuntime)[number]) {
 export function hasRedisConfig() {
   return Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 }
+
+export function isProductionRuntime() {
+  return process.env.NODE_ENV === "production";
+}
+
+export function assertProductionRedisConfig() {
+  if (isProductionRuntime() && !hasRedisConfig()) {
+    throw new Error("Missing required production KV configuration: KV_REST_API_URL and KV_REST_API_TOKEN.");
+  }
+}

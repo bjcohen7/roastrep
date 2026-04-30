@@ -44,13 +44,11 @@ Recommended for the current setup:
 - `COMMENTARY_PROVIDER=openai`
 - `USE_MOCK_COMMENTARY=false`
 
-Optional for now:
+Optional for local development:
 
 - `ANTHROPIC_API_KEY`
 - `RESERVOIR_API_KEY`
 - `ETHERSCAN_API_KEY`
-- `KV_REST_API_URL`
-- `KV_REST_API_TOKEN`
 
 3. Run locally:
 
@@ -83,3 +81,8 @@ corepack pnpm build
 ## Deployment
 
 Netlify config is included in `netlify.toml`. Set the same environment variables in Netlify before deploying.
+
+Production note:
+
+- `KV_REST_API_URL` and `KV_REST_API_TOKEN` are required in production.
+- The app now refuses to fall back to in-memory cache and rate limiting in production so abuse protections remain shared across regions and instances.

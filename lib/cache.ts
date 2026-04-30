@@ -1,10 +1,11 @@
 import { Redis } from "@upstash/redis";
 
-import { hasRedisConfig } from "@/lib/env";
+import { assertProductionRedisConfig, hasRedisConfig } from "@/lib/env";
 
 const memoryStore = new Map<string, { expiresAt: number; value: unknown }>();
 
 function getRedis() {
+  assertProductionRedisConfig();
   if (!hasRedisConfig()) return null;
   return new Redis({
     url: process.env.KV_REST_API_URL!,
