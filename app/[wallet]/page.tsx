@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import RoastReport from "@/components/RoastReport";
 import { getAuditReport } from "@/lib/audit";
@@ -40,7 +39,11 @@ export default async function WalletPage({ params }: WalletPageProps) {
   try {
     const report = await getAuditReport(wallet);
     return <RoastReport initialStage="verdict" initialSubject={wallet} report={report} />;
-  } catch {
-    notFound();
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "The Bureau could not complete this review at present. Please try again shortly.";
+    return <RoastReport initialStage="intake" initialSubject={wallet} initialError={message} />;
   }
 }

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 
 import Exhibit from "@/components/Exhibit";
 import ShareModal from "@/components/ShareModal";
-import { AUDIT_PHASES, C, EMPTY_HEADLINE_STATS, EMPTY_SECONDARY_STATS } from "@/lib/constants";
+import { AUDIT_PHASES, C, EMPTY_HEADLINE_STATS, EMPTY_SECONDARY_STATS, ENS_AUDIT_PHASES } from "@/lib/constants";
 import type { AuditReport, AuditStage } from "@/lib/types";
 import { deterministicCaseNumber, shortAddress } from "@/lib/utils";
 
 type RoastReportProps = {
   initialStage?: AuditStage;
   initialSubject?: string;
+  initialError?: string;
   report?: AuditReport | null;
 };
 
@@ -22,12 +23,13 @@ const fontBody = "var(--font-instrument-serif), serif";
 export default function RoastReport({
   initialStage = "intake",
   initialSubject = "",
+  initialError = "",
   report = null
 }: RoastReportProps) {
   const router = useRouter();
   const [input, setInput] = useState(initialSubject);
   const [stage, setStage] = useState<AuditStage>(report ? "verdict" : initialStage);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError);
   const [phaseIdx, setPhaseIdx] = useState(0);
   const [resolvedAddress, setResolvedAddress] = useState(report?.wallet ?? "");
   const [resolvedEns, setResolvedEns] = useState(report?.displayName.endsWith(".eth") ? report.displayName : "");
@@ -48,10 +50,12 @@ export default function RoastReport({
   const summary = report?.summary;
   const headlineStats = summary ? EMPTY_HEADLINE_STATS(summary) : [];
   const secondaryStats = summary ? EMPTY_SECONDARY_STATS(summary) : [];
+  const isEnsSubject = Boolean(resolvedEns || input.trim().toLowerCase().endsWith(".eth"));
+  const auditPhases = isEnsSubject ? ENS_AUDIT_PHASES : AUDIT_PHASES;
 
   useEffect(() => {
     if (stage !== "analyzing") return;
-    if (phaseIdx >= AUDIT_PHASES.length) {
+    if (phaseIdx >= auditPhases.length) {
       const timeout = window.setTimeout(() => {
         const target = input.trim().toLowerCase();
         router.push(`/${encodeURIComponent(target)}`);
@@ -60,7 +64,7 @@ export default function RoastReport({
     }
     const timeout = window.setTimeout(() => setPhaseIdx((value) => value + 1), 750);
     return () => window.clearTimeout(timeout);
-  }, [stage, phaseIdx, input, router]);
+  }, [stage, phaseIdx, input, router, auditPhases.length]);
 
   useEffect(() => {
     if (!showShare) return;
@@ -257,7 +261,7 @@ export default function RoastReport({
             <div className="text-center mb-3" style={{ fontFamily: fontDisplay, fontStyle: "italic", fontSize: "clamp(28px, 6vw, 44px)", fontVariationSettings: "'SOFT' 100, 'opsz' 144", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
               {resolvedEns || input.trim()}
             </div>
-            {resolvedEns && <div className="text-center text-xs mb-10" style={{ fontFamily: fontMono, color: C.inkSoft }}>resolves on load</div>}
+            {resolvedEns && <div className="text-center text-xs mb-10" style={{ fontFamily: fontMono, color: C.inkSoft }}>ENS record under verification</div>}
             {!resolvedEns && <div className="mb-10" />}
 
             <div className="relative max-w-md mx-auto p-6 sm:p-8 overflow-hidden" style={{ border: `1px solid ${C.rule}`, background: "rgba(255,255,255,0.25)" }}>
@@ -266,7 +270,7 @@ export default function RoastReport({
                 Audit Log
               </div>
               <ul className="space-y-2.5">
-                {AUDIT_PHASES.map((phase, index) => {
+                {auditPhases.map((phase, index) => {
                   const done = index < phaseIdx;
                   const active = index === phaseIdx;
                   const pending = index > phaseIdx;

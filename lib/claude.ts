@@ -72,6 +72,50 @@ export async function generateCommentary(input: {
 }
 
 function buildMockCommentary(rawFindings: RawFinding[], summary: Summary) {
+  if (isLimitedFile(rawFindings, summary)) {
+    const caseStudies = rawFindings.map((finding, index) => {
+      const numeral = ["I", "II", "III", "IV", "V", "VI"][index] ?? String(index + 1);
+      const exhibit = String.fromCharCode(65 + index);
+      const prototype = PROTOTYPE_COPY[finding.key];
+
+      return {
+        id: numeral,
+        category: `Exhibit ${exhibit} · ${CATEGORY_LABEL[finding.key]}`,
+        title: prototype.title,
+        asset: finding.asset,
+        acquired: {
+          date: finding.acquisition.date,
+          price: finding.acquisition.displayPrice,
+          usd: formatUsd(finding.acquisition.priceUsd)
+        },
+        disposed: {
+          date: finding.disposition.date,
+          price: finding.disposition.displayPrice,
+          usd: formatUsd(finding.disposition.priceUsd)
+        },
+        aftermath: buildAftermath(finding),
+        counterfactual: buildCounterfactual(finding),
+        commentary: prototype.commentary,
+        severity: prototype.severity
+      } satisfies CaseStudy;
+    });
+
+    return {
+      caseStudies,
+      headlineFinding: {
+        text: "The Bureau located only a modest NFT file for the subject. This should not be mistaken for prudence.",
+        loss: "Available evidence was insufficient to establish a broader pattern of collectible self-harm."
+      },
+      severityRating: {
+        grade: "BB",
+        label: "Recoverable",
+        outlook: "Stable",
+        blurb:
+          "The Bureau's file on this subject is unexpectedly thin. While the record contains isolated fees and minor incidents, it does not yet support a full indictment of judgment."
+      }
+    };
+  }
+
   const caseStudies = rawFindings.map((finding, index) => {
     const numeral = ["I", "II", "III", "IV", "V", "VI"][index] ?? String(index + 1);
     const exhibit = String.fromCharCode(65 + index);
@@ -203,6 +247,11 @@ function deriveMockRating(caseCount: number, summary: Summary): SeverityRating {
     blurb:
       "The Bureau observes repeated lapses in judgment and, at present, insufficient evidence of sustained corrective behavior."
   };
+}
+
+function isLimitedFile(rawFindings: RawFinding[], summary: Summary) {
+  const nonGasFindings = rawFindings.filter((finding) => finding.key !== "gas_martyrdom");
+  return summary.txnCount <= 8 && nonGasFindings.length <= 1;
 }
 
 function formatMetric(

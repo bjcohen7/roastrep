@@ -12,6 +12,18 @@ export const AUDIT_PHASES = [
   "Sealing the report"
 ] as const;
 
+export const ENS_AUDIT_PHASES = [
+  "Verifying ENS record and forwarding address",
+  "Subpoenaing onchain history (Jan 2021 – present)",
+  "Reconstructing subject wallet activity",
+  "Matching buy/sell pairs across 5 years",
+  "Cross-referencing the rug registry",
+  "Tabulating gas martyrdom",
+  "Calculating counterfactual gains",
+  "Compiling exhibits A through F",
+  "Sealing the report"
+] as const;
+
 export const SHARE_TEXT_VARIANTS = [
   (rating: string) => `my onchain conduct has been forensically audited
 
