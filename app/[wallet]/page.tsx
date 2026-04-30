@@ -9,13 +9,13 @@ type WalletPageProps = {
 
 export async function generateMetadata({ params }: WalletPageProps): Promise<Metadata> {
   const { wallet } = await params;
+  const report = await getCachedAuditReport(wallet).catch(() => null);
+  if (!report) {
+    return {
+      title: `The Roast Report — ${wallet}`
+    };
+  }
   try {
-    const report = await getCachedAuditReport(wallet);
-    if (!report) {
-      return {
-        title: `The Roast Report — ${wallet}`
-      };
-    }
     const baseUrl = report.shareBaseUrl.startsWith("http") ? report.shareBaseUrl : `https://${report.shareBaseUrl}`;
     const canonicalPath = `/${encodeURIComponent(wallet)}`;
     const ogImageUrl = `${baseUrl}/api/og/${encodeURIComponent(wallet)}?v=${auditVersionHash(report)}`;
@@ -62,17 +62,10 @@ export async function generateMetadata({ params }: WalletPageProps): Promise<Met
 
 export default async function WalletPage({ params }: WalletPageProps) {
   const { wallet } = await params;
-  try {
-    const cached = await getCachedAuditReport(wallet);
-    if (cached) {
-      return <RoastReport initialStage="verdict" initialSubject={wallet} report={cached} />;
-    }
-
-    // No cached report available — render the analyzing UI and let the client-side
-    // fetch handle the audit via the API route (which has proper timeout handling).
-    return <RoastReport initialStage="analyzing" initialSubject={wallet} />;
-  } catch {
-    // If cache lookup itself fails, fall back to client-side fetch.
-    return <RoastReport initialStage="analyzing" initialSubject={wallet} />;
+  const cached = await getCachedAuditReport(wallet).catch(() => null);
+  if (cached) {
+    return <RoastReport initialStage="verdict" initialSubject={wallet} report={cached} />;
   }
+
+  return <RoastReport initialStage="analyzing" initialSubject={wallet} />;
 }

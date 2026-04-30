@@ -3,7 +3,7 @@ import { getEnv } from "@/lib/env";
 import { getCachedJson, setCachedJson } from "@/lib/cache";
 import { fetchAlchemyCollections, fetchAlchemyHoldings, fetchAlchemyTrades, fetchAlchemyTransferActivityCount } from "@/lib/alchemy";
 import { generateCommentary } from "@/lib/claude";
-import { resolveWalletOrEns } from "@/lib/ens";
+import { parseSubjectIdentifier, resolveWalletOrEns } from "@/lib/ens";
 import { fetchGasSummary } from "@/lib/etherscan";
 import { buildFindings, defaultCaseStudies } from "@/lib/findings";
 import { fetchCollectionFloorEvents, fetchCollections, fetchUserHoldings, fetchWalletTrades } from "@/lib/reservoir";
@@ -14,9 +14,20 @@ const AUDIT_TTL_SECONDS = 60 * 60 * 24;
 const AUDIT_SCHEMA_VERSION = "2026-04-30-activity-fallback";
 
 export async function getCachedAuditReport(subject: string) {
-  const resolved = await resolveWalletOrEns(subject);
-  const cacheKey = `audit:${AUDIT_SCHEMA_VERSION}:${resolved.address.toLowerCase()}`;
-  return getCachedJson<AuditReport>(cacheKey);
+  const parsed = parseSubjectIdentifier(subject);
+  if (parsed?.type === "address") {
+    const directCacheKey = `audit:${AUDIT_SCHEMA_VERSION}:${parsed.value.toLowerCase()}`;
+    const cached = await getCachedJson<AuditReport>(directCacheKey);
+    if (cached) return cached;
+  }
+
+  try {
+    const resolved = await resolveWalletOrEns(subject);
+    const cacheKey = `audit:${AUDIT_SCHEMA_VERSION}:${resolved.address.toLowerCase()}`;
+    return getCachedJson<AuditReport>(cacheKey);
+  } catch {
+    return null;
+  }
 }
 
 export async function getAuditReport(subject: string, options?: { refresh?: boolean }) {
