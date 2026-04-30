@@ -15,6 +15,7 @@ const publicClient = createPublicClient({
 });
 
 const ENS_GATEWAYS = ["https://ccip.ens.xyz"];
+const LIKELY_NON_ETH_WALLET_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,64}$/;
 
 export function parseSubjectIdentifier(value: string) {
   const normalized = value.trim().toLowerCase();
@@ -31,6 +32,9 @@ export function parseSubjectIdentifier(value: string) {
 export async function resolveWalletOrEns(input: string) {
   const parsed = parseSubjectIdentifier(input);
   if (!parsed) {
+    if (LIKELY_NON_ETH_WALLET_REGEX.test(input.trim())) {
+      throw new Error("The Bureau does not audit foreign jurisdictions. This office covers Ethereum only.");
+    }
     throw new Error("Subject identifier is malformed. Provide a valid wallet (0x…) or ENS name (name.eth).");
   }
 

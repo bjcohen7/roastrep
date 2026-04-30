@@ -25,6 +25,7 @@ const BEN_WALLET_EASTER_EGGS = new Set([
   "0x6d53c339d2f0ef9698e77ff5bc55961bd53e2c5b",
   "0xfebb6f14d86d596c49321318bb83987b373b6c9c"
 ]);
+const LIKELY_NON_ETH_WALLET_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,64}$/;
 
 function normalizeReport(report: AuditReport | null, fallbackSubject: string): AuditReport | null {
   if (!report) return null;
@@ -203,6 +204,7 @@ export default function RoastReport({
     if (!normalized) return null;
     if (/^0x[a-f0-9]{40}$/.test(normalized)) return { type: "address" as const, value: normalized };
     if (/^[a-z0-9][a-z0-9-]{0,62}\.eth$/.test(normalized)) return { type: "ens" as const, value: normalized };
+    if (LIKELY_NON_ETH_WALLET_REGEX.test(value.trim())) return { type: "unsupported" as const, value: value.trim() };
     return null;
   }
 
@@ -211,6 +213,10 @@ export default function RoastReport({
     const result = validate(input);
     if (!result) {
       setError("Subject identifier is malformed. Provide a valid wallet (0x…) or ENS name (name.eth).");
+      return;
+    }
+    if (result.type === "unsupported") {
+      setError("The Bureau does not audit foreign jurisdictions. This office covers Ethereum only.");
       return;
     }
     if (result.type === "ens") {
