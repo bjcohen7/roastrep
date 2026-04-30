@@ -25,27 +25,23 @@ export const ENS_AUDIT_PHASES = [
 ] as const;
 
 export const SHARE_TEXT_VARIANTS = [
-  (rating: string) => `my onchain conduct has been forensically audited
-
+  (rating: string) => `my onchain conduct has been forensically audited by @roastreport_fun
 verdict: ${rating}
 outlook: negative
-
-submit your wallet`,
+submit your wallet
+by @mr_benft`,
   (rating: string) => `the bureau of onchain affairs has reviewed my wallet and i regret asking
-
 rating: ${rating}. catastrophic.
-
-audit yours`,
-  (rating: string) => `rated ${rating} by The Roast Report
-
+audit yours @roastreport_fun
+by @mr_benft`,
+  (rating: string) => `rated ${rating} by @roastreport_fun
 they were not kind
-
-your turn`,
+your turn
+by @mr_benft`,
   () => `imagine selling a Bored Ape for 4.82 ETH in 2021
-
 couldn't be me
-
-(it was me. they have the receipts.)`
+(it was me. they have the receipts.)
+@roastreport_fun by @mr_benft`
 ] as const;
 
 export const C = {
