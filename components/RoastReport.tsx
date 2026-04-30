@@ -21,6 +21,10 @@ const fontMono = "var(--font-jetbrains-mono), monospace";
 const fontBody = "var(--font-instrument-serif), serif";
 const ANALYSIS_STEP_DELAYS = [460, 520, 560, 600, 640, 680, 720, 760, 820] as const;
 const ANALYSIS_REDIRECT_DELAY = 520;
+const BEN_WALLET_EASTER_EGGS = new Set([
+  "0x6d53c339d2f0ef9698e77ff5bc55961bd53e2c5b",
+  "0xfebb6f14d86d596c49321318bb83987b373b6c9c"
+]);
 
 export default function RoastReport({
   initialStage = "intake",
@@ -54,6 +58,7 @@ export default function RoastReport({
   const secondaryStats = summary ? EMPTY_SECONDARY_STATS(summary) : [];
   const isEnsSubject = Boolean(resolvedEns || input.trim().toLowerCase().endsWith(".eth"));
   const auditPhases = isEnsSubject ? ENS_AUDIT_PHASES : AUDIT_PHASES;
+  const showBenGif = Boolean(report?.wallet && BEN_WALLET_EASTER_EGGS.has(report.wallet.toLowerCase()));
 
   useEffect(() => {
     if (stage !== "analyzing") return;
@@ -371,6 +376,40 @@ export default function RoastReport({
                 {report.headlineFinding.loss}
               </div>
             </div>
+
+            {showBenGif && (
+              <div
+                className="mb-8 p-4 sm:p-5"
+                style={{
+                  background: C.paperSoft,
+                  border: `1px solid ${C.ruleSoft}`
+                }}
+              >
+                <div
+                  className="text-[9px] sm:text-[10px] tracking-[0.28em] uppercase mb-3"
+                  style={{ fontFamily: fontMono, color: C.seal }}
+                >
+                  Supplemental Finding
+                </div>
+                <img
+                  src="/easter-eggs/jack-nicholson-yes.gif"
+                  alt="Jack Nicholson nodding yes"
+                  className="w-full h-auto block mb-3"
+                  style={{ border: `1px solid ${C.ruleSoft}` }}
+                />
+                <div
+                  style={{
+                    fontFamily: fontDisplay,
+                    fontStyle: "italic",
+                    fontSize: "clamp(18px, 4vw, 24px)",
+                    color: C.ink,
+                    letterSpacing: "-0.01em"
+                  }}
+                >
+                  The Bureau has no further questions.
+                </div>
+              </div>
+            )}
 
             <button
               onClick={openShare}
