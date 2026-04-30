@@ -114,7 +114,7 @@ export default function RoastReport({
   const [stage, setStage] = useState<AuditStage>(safeReport ? "verdict" : initialStage);
   const [error, setError] = useState(initialError);
   const [phaseIdx, setPhaseIdx] = useState(0);
-  const [analysisTarget, setAnalysisTarget] = useState("");
+  const [analysisTarget, setAnalysisTarget] = useState(initialStage === "analyzing" && initialSubject ? initialSubject : "");
   const [analysisStatus, setAnalysisStatus] = useState<"idle" | "pending" | "ready" | "failed">("idle");
   const [analysisError, setAnalysisError] = useState("");
   const [resolvedAddress, setResolvedAddress] = useState(safeReport?.wallet ?? "");

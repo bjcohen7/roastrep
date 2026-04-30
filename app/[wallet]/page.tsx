@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 
 import RoastReport from "@/components/RoastReport";
-import { auditVersionHash, getAuditReport, getCachedAuditReport } from "@/lib/audit";
-import { consumeRateLimit } from "@/lib/cache";
-import { toPublicAuditError } from "@/lib/public-errors";
+import { auditVersionHash, getCachedAuditReport } from "@/lib/audit";
 
 type WalletPageProps = {
   params: Promise<{ wallet: string }>;
@@ -71,29 +68,11 @@ export default async function WalletPage({ params }: WalletPageProps) {
       return <RoastReport initialStage="verdict" initialSubject={wallet} report={cached} />;
     }
 
-    const headerStore = await headers();
-    const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-    const rate = await consumeRateLimit(`rate:audit:page:${ip}`, 10, 60 * 60);
-
-    if (!rate.allowed) {
-      return (
-        <RoastReport
-          initialStage="intake"
-          initialSubject={wallet}
-          initialError="Rate limit exceeded."
-        />
-      );
-    }
-
-    const report = await getAuditReport(wallet);
-    return <RoastReport initialStage="verdict" initialSubject={wallet} report={report} />;
-  } catch (error) {
-    return (
-      <RoastReport
-        initialStage="intake"
-        initialSubject={wallet}
-        initialError={toPublicAuditError(error)}
-      />
-    );
+    // No cached report available — render the analyzing UI and let the client-side
+    // fetch handle the audit via the API route (which has proper timeout handling).
+    return <RoastReport initialStage="analyzing" initialSubject={wallet} />;
+  } catch {
+    // If cache lookup itself fails, fall back to client-side fetch.
+    return <RoastReport initialStage="analyzing" initialSubject={wallet} />;
   }
 }
