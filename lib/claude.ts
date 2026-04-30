@@ -106,7 +106,9 @@ async function generateOpenAiCommentary(input: {
                   "Make the copy feel more savage and more specific than a normal brand voice.",
                   "Avoid repeating the exact same titles across different wallets when the facts differ.",
                   "Verdict labels such as 'Utterly Moronic', 'Tragic', and 'Not Recoverable' are acceptable.",
-                  "If the facts are thin, say so in a cutting way rather than sounding apologetic."
+                  "If the facts are thin, say so in a cutting way rather than sounding apologetic.",
+                  "If any finding references Quirkies, explicitly mock that fact. 'Unfortunately they had a Quirkies.' is an acceptable sentence.",
+                  "If any finding references Killabears, briefly acknowledge it as a rare positive or civilized choice without becoming sincere."
                 ],
                 referenceExamples: mockReference
               })
@@ -292,6 +294,12 @@ function buildMockCommentary(rawFindings: RawFinding[], summary: Summary) {
 }
 
 function buildHeadline(finding: RawFinding) {
+  if (isQuirkiesFinding(finding)) {
+    return `Unfortunately they had a Quirkies. The Bureau regrets that this phrase is evidentiary rather than metaphorical.`;
+  }
+  if (isKillabearsFinding(finding)) {
+    return `Against expectation, the subject at one point held a Killabears. The Bureau acknowledges this with visible reluctance.`;
+  }
   if (finding.key === "paper_hands") {
     return `On ${finding.disposition.date}, the subject sold ${finding.asset} for ${finding.disposition.displayPrice} and then watched the remaining upside belong to someone better adjusted.`;
   }
@@ -311,6 +319,12 @@ function buildHeadline(finding: RawFinding) {
 }
 
 function buildTitle(finding: RawFinding) {
+  if (isQuirkiesFinding(finding)) {
+    return "Unfortunately They Had a Quirkies";
+  }
+  if (isKillabearsFinding(finding)) {
+    return "A Rarely Defensible Preference";
+  }
   if (finding.key === "paper_hands") {
     return `Premature Exit from ${shortAsset(finding.asset)}`;
   }
@@ -330,6 +344,12 @@ function buildTitle(finding: RawFinding) {
 }
 
 function buildAftermath(finding: RawFinding) {
+  if (isQuirkiesFinding(finding)) {
+    return `The record confirms the subject at one point held ${finding.asset}. The Bureau was not improved by learning this.`;
+  }
+  if (isKillabearsFinding(finding)) {
+    return `The subject's file contains ${finding.asset}, which the Bureau is professionally obligated to rank above the usual landfill inventory.`;
+  }
   if (finding.key === "paper_hands") {
     return `Asset later reached approximately ${formatNative(toNumber(finding.facts.peakNative) ?? 0)}. The subject had already excused themself from the upside.`;
   }
@@ -417,6 +437,12 @@ function deriveMockRating(caseCount: number, summary: Summary): SeverityRating {
 }
 
 function buildCommentary(finding: RawFinding) {
+  if (isQuirkiesFinding(finding)) {
+    return "Unfortunately they had a Quirkies. The Bureau recognizes that markets are imperfect, but some outcomes still feel unnecessarily personal.";
+  }
+  if (isKillabearsFinding(finding)) {
+    return "The Bureau is not eager to offer praise, but the presence of a Killabears suggests the subject briefly wandered into something almost respectable before resuming ordinary conduct.";
+  }
   if (finding.key === "paper_hands") {
     return "The subject appears to have encountered a gain, become frightened by its existence, and liquidated the position before the market delivered its more humiliating sequel. The Bureau has seen panic mistaken for prudence before.";
   }
@@ -436,6 +462,7 @@ function buildCommentary(finding: RawFinding) {
 }
 
 function buildSeverity(finding: RawFinding) {
+  if (isKillabearsFinding(finding)) return "Reluctantly Positive";
   if (finding.key === "paper_hands") return "Humiliating";
   if (finding.key === "top_tick") return "Self-Inflicted";
   if (finding.key === "diamond_hands") return "Lingering";
@@ -446,6 +473,14 @@ function buildSeverity(finding: RawFinding) {
 
 function shortAsset(asset: string) {
   return asset.length > 34 ? `${asset.slice(0, 34).trim()}…` : asset;
+}
+
+function isQuirkiesFinding(finding: RawFinding) {
+  return `${finding.asset} ${finding.collectionName ?? ""}`.toLowerCase().includes("quirkies");
+}
+
+function isKillabearsFinding(finding: RawFinding) {
+  return `${finding.asset} ${finding.collectionName ?? ""}`.toLowerCase().includes("killabears");
 }
 
 function isLimitedFile(rawFindings: RawFinding[], summary: Summary) {
